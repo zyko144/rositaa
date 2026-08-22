@@ -28,27 +28,27 @@ function addRoses(userId, amount) {
 }
 
 const shopItems = [
-    { id: 'role_vip', name: 'Rôle VIP', price: 1000, desc: 'Obtiens le rôle VIP exclusif', roleId: '123456789' },
-    { id: 'role_millionaire', name: 'Rôle Millionnaire', price: 10000, desc: 'Prouve ta richesse', roleId: '987654321' }
+    { id: 'role_vip', name: 'Rï¿½le VIP', price: 1000, desc: 'Obtiens le rï¿½le VIP exclusif', roleId: '123456789' },
+    { id: 'role_millionaire', name: 'Rï¿½le Millionnaire', price: 10000, desc: 'Prouve ta richesse', roleId: '987654321' }
 ];
 
 module.exports = [
     new SlashCommandBuilder().setName('roses')
-        .setDescription('?? Voir ton nombre de roses (ton argent) !')
+        .setDescription('?? Voir ton nombre de roses (ton argent) !').setDefaultMemberPermissions(null)
         .addUserOption(opt => opt.setName('membre').setDescription('Voir les roses d\'un autre membre').setRequired(false)),
         
     new SlashCommandBuilder().setName('shop')
-        .setDescription('?? Afficher la boutique du serveur !'),
+        .setDescription('?? Afficher la boutique du serveur !').setDefaultMemberPermissions(null),
         
     new SlashCommandBuilder().setName('buy')
-        .setDescription('?? Acheter un objet dans la boutique')
+        .setDescription('?? Acheter un objet dans la boutique').setDefaultMemberPermissions(null)
         .addStringOption(opt => 
             opt.setName('item_id')
-               .setDescription('L\'ID de l\'objet à acheter')
+               .setDescription('L\'ID de l\'objet ï¿½ acheter')
                .setRequired(true)
                .addChoices(
-                   { name: 'Rôle VIP (1000 roses)', value: 'role_vip' },
-                   { name: 'Rôle Millionnaire (10000 roses)', value: 'role_millionaire' }
+                   { name: 'Rï¿½le VIP (1000 roses)', value: 'role_vip' },
+                   { name: 'Rï¿½le Millionnaire (10000 roses)', value: 'role_millionaire' }
                )
         )
 ];
@@ -62,7 +62,7 @@ module.exports.execute = async (interaction) => {
         const embed = new EmbedBuilder()
             .setColor(0xFF69B4)
             .setTitle(`?? Compte en banque de ${target.username}`)
-            .setDescription(`Ce membre possède actuellement **${roses} Roses** !`);
+            .setDescription(`Ce membre possï¿½de actuellement **${roses} Roses** !`);
         return interaction.reply({ embeds: [embed] });
     }
     
@@ -97,6 +97,6 @@ module.exports.execute = async (interaction) => {
             await interaction.member.roles.add(role).catch(() => {});
         }
         
-        return interaction.reply(`?? Félicitations ! Tu viens d'acheter **${item.name}** pour ${item.price} roses !`);
+        return interaction.reply(`?? Fï¿½licitations ! Tu viens d'acheter **${item.name}** pour ${item.price} roses !`);
     }
 };

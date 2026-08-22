@@ -2,15 +2,15 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 
 module.exports = [
-  new SlashCommandBuilder().setName('8ball').setDescription('Pose une question magique')
+  new SlashCommandBuilder().setName('8ball').setDefaultMemberPermissions(null).setDescription('Pose une question magique')
     .addStringOption(opt => opt.setName('question').setDescription('Question').setRequired(true)),
-  new SlashCommandBuilder().setName('coinflip').setDescription('Pile ou face'),
-  new SlashCommandBuilder().setName('roll').setDescription('Lance un dé de 1 à 100'),
-  new SlashCommandBuilder().setName('joke').setDescription('Raconte une blague aléatoire'),
-  new SlashCommandBuilder().setName('meme').setDescription('Affiche un meme (simulé)'),
-  new SlashCommandBuilder().setName('rps').setDescription('Pierre Feuille Ciseaux')
+  new SlashCommandBuilder().setName('coinflip').setDefaultMemberPermissions(null).setDescription('Pile ou face'),
+  new SlashCommandBuilder().setName('roll').setDefaultMemberPermissions(null).setDescription('Lance un dé de 1 à 100'),
+  new SlashCommandBuilder().setName('joke').setDefaultMemberPermissions(null).setDescription('Raconte une blague aléatoire'),
+  new SlashCommandBuilder().setName('meme').setDefaultMemberPermissions(null).setDescription('Affiche un meme (simulé)'),
+  new SlashCommandBuilder().setName('rps').setDefaultMemberPermissions(null).setDescription('Pierre Feuille Ciseaux')
     .addStringOption(opt => opt.setName('choix').setDescription('pierre / feuille / ciseaux').setRequired(true)),
-  new SlashCommandBuilder().setName('lovecalc').setDescription('Calcule l\'amour')
+  new SlashCommandBuilder().setName('lovecalc').setDefaultMemberPermissions(null).setDescription('Calcule l\'amour')
     .addUserOption(opt => opt.setName('user1').setDescription('Personne 1').setRequired(true))
     .addUserOption(opt => opt.setName('user2').setDescription('Personne 2').setRequired(true))
 ];

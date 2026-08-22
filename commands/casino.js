@@ -29,16 +29,16 @@ function addRoses(userId, amount) {
 
 module.exports = [
     new SlashCommandBuilder().setName('casino')
-        .setDescription('?? Jouer au casino avec tes roses !')
+        .setDescription('?? Jouer au casino avec tes roses !').setDefaultMemberPermissions(null)
         .addSubcommand(sub => 
             sub.setName('coinflip')
-               .setDescription('Jouer à Pile ou Face')
+               .setDescription('Jouer ï¿½ Pile ou Face')
                .addIntegerOption(opt => opt.setName('mise').setDescription('Combien de roses miser ?').setRequired(true).setMinValue(1))
                .addStringOption(opt => opt.setName('choix').setDescription('Pile ou Face ?').setRequired(true).addChoices({name: 'Pile', value: 'pile'}, {name: 'Face', value: 'face'}))
         )
         .addSubcommand(sub => 
             sub.setName('slots')
-               .setDescription('Jouer aux machines à sous')
+               .setDescription('Jouer aux machines ï¿½ sous')
                .addIntegerOption(opt => opt.setName('mise').setDescription('Combien de roses miser ?').setRequired(true).setMinValue(1))
         )
 ];
@@ -61,10 +61,10 @@ module.exports.execute = async (interaction) => {
         
         if (choice === result) {
             addRoses(interaction.user.id, bet);
-            return interaction.reply(`?? La pièce tombe sur **${result}**...\n?? Gagné ! Tu remportes **${bet * 2}** roses !`);
+            return interaction.reply(`?? La piï¿½ce tombe sur **${result}**...\n?? Gagnï¿½ ! Tu remportes **${bet * 2}** roses !`);
         } else {
             addRoses(interaction.user.id, -bet);
-            return interaction.reply(`?? La pièce tombe sur **${result}**...\n?? Perdu ! Tu perds tes **${bet}** roses.`);
+            return interaction.reply(`?? La piï¿½ce tombe sur **${result}**...\n?? Perdu ! Tu perds tes **${bet}** roses.`);
         }
     }
     
@@ -87,14 +87,14 @@ module.exports.execute = async (interaction) => {
             addRoses(interaction.user.id, winAmount - bet);
             const embed = new EmbedBuilder()
                 .setColor(0x00FF00)
-                .setTitle('?? Machine à sous ??')
+                .setTitle('?? Machine ï¿½ sous ??')
                 .setDescription(`[ ${slot1} | ${slot2} | ${slot3} ]\n\n?? **JACKPOT !** Tu gagnes **${winAmount}** roses !`);
             return interaction.reply({ embeds: [embed] });
         } else {
             addRoses(interaction.user.id, -bet);
             const embed = new EmbedBuilder()
                 .setColor(0xFF0000)
-                .setTitle('?? Machine à sous ??')
+                .setTitle('?? Machine ï¿½ sous ??')
                 .setDescription(`[ ${slot1} | ${slot2} | ${slot3} ]\n\n?? **PERDU !** Tu as perdu tes **${bet}** roses.`);
             return interaction.reply({ embeds: [embed] });
         }
