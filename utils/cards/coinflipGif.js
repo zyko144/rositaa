@@ -1,6 +1,6 @@
 require('./fonts');
 const { createCanvas } = require('@napi-rs/canvas');
-const { roundRect } = require('./draw');
+const { roundRect, drawCardBackground } = require('./draw');
 const { encodeFrames, easeOutCubic } = require('./gif');
 
 const W = 480;
@@ -28,13 +28,7 @@ async function renderCoinflipGif({ result }) {
     const canvas = createCanvas(W, H);
     const ctx = canvas.getContext('2d');
 
-    // Fond
-    const bg = ctx.createLinearGradient(0, 0, W, H);
-    bg.addColorStop(0, '#3a0d2e');
-    bg.addColorStop(1, '#c23a86');
-    ctx.fillStyle = bg;
-    roundRect(ctx, 0, 0, W, H, 24);
-    ctx.fill();
+    drawCardBackground(ctx, W, H, 24);
     ctx.strokeStyle = 'rgba(255,255,255,0.3)';
     ctx.lineWidth = 2;
     roundRect(ctx, 5, 5, W - 10, H - 10, 20);

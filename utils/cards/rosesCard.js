@@ -1,6 +1,6 @@
 require('./fonts');
 const { createCanvas, loadImage } = require('@napi-rs/canvas');
-const { roundRect, clipCircle } = require('./draw');
+const { roundRect, drawCardBackground, clipCircle } = require('./draw');
 const { getIcon } = require('./icons');
 const { encodeFrames } = require('./gif');
 
@@ -77,21 +77,7 @@ async function renderRosesCard({ username, avatarURL, roses, rank, totalMembers 
     const canvas = createCanvas(W, H);
     const ctx = canvas.getContext('2d');
 
-    // --- Fond degrade rose ---
-    const bg = ctx.createLinearGradient(0, 0, W, H);
-    bg.addColorStop(0, '#3a0d2e');
-    bg.addColorStop(0.55, '#8a1f5c');
-    bg.addColorStop(1, '#e0559f');
-    ctx.fillStyle = bg;
-    roundRect(ctx, 0, 0, W, H, 28);
-    ctx.fill();
-
-    // Halo lumineux derriere l'avatar
-    const glow = ctx.createRadialGradient(150, 110, 10, 150, 110, 380);
-    glow.addColorStop(0, 'rgba(255,200,225,0.45)');
-    glow.addColorStop(1, 'rgba(255,200,225,0)');
-    ctx.fillStyle = glow;
-    ctx.fillRect(0, 0, W, H);
+    drawCardBackground(ctx, W, H, 28);
 
     // roses flottantes
     for (const rose of FLOATING_ROSES) {

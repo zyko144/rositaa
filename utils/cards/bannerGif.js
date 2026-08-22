@@ -1,6 +1,6 @@
 require('./fonts');
 const { createCanvas } = require('@napi-rs/canvas');
-const { roundRect } = require('./draw');
+const { roundRect, drawCardBackground } = require('./draw');
 const { getIcon } = require('./icons');
 const { encodeFrames } = require('./gif');
 
@@ -34,19 +34,7 @@ async function renderBannerGif({ icon, label }) {
     const canvas = createCanvas(W, H);
     const ctx = canvas.getContext('2d');
 
-    const bg = ctx.createLinearGradient(0, 0, W, H);
-    bg.addColorStop(0, '#3a0d2e');
-    bg.addColorStop(0.55, '#8a1f5c');
-    bg.addColorStop(1, '#e0559f');
-    ctx.fillStyle = bg;
-    roundRect(ctx, 0, 0, W, H, 22);
-    ctx.fill();
-
-    const glow = ctx.createRadialGradient(W / 2, H / 2, 10, W / 2, H / 2, 420);
-    glow.addColorStop(0, 'rgba(255,200,225,0.30)');
-    glow.addColorStop(1, 'rgba(255,200,225,0)');
-    ctx.fillStyle = glow;
-    ctx.fillRect(0, 0, W, H);
+    drawCardBackground(ctx, W, H, 22);
 
     for (const rose of FLOATING_ROSES) {
       const dy = Math.sin(t * Math.PI * 2 + rose.phase) * rose.amp;
