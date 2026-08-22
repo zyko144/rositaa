@@ -97,13 +97,11 @@ module.exports.execute = async (interaction) => {
     await interaction.deferReply({ ephemeral: false });
     try {
       const channels = await interaction.guild.channels.fetch();
-      let count = 0;
-      for (const [id, channel] of channels) {
-        if (channel && channel.type === 0) { // 0 = GuildText
-          await channel.permissionOverwrites.edit(interaction.guild.roles.everyone.id, { SendMessages: false }).catch(()=>{});
-          count++;
-        }
-      }
+      const textChannels = [...channels.values()].filter(c => c && c.type === 0); // 0 = GuildText
+      await Promise.all(textChannels.map(channel =>
+        channel.permissionOverwrites.edit(interaction.guild.roles.everyone.id, { SendMessages: false }).catch(() => {})
+      ));
+      const count = textChannels.length;
       interaction.client.isLockdownActive = true;
       const { embed, files } = await buildBrandedReply({
         title: '🚨 LOCKDOWN ACTIVÉ',
@@ -121,13 +119,11 @@ module.exports.execute = async (interaction) => {
     await interaction.deferReply({ ephemeral: false });
     try {
       const channels = await interaction.guild.channels.fetch();
-      let count = 0;
-      for (const [id, channel] of channels) {
-        if (channel && channel.type === 0) { // 0 = GuildText
-          await channel.permissionOverwrites.edit(interaction.guild.roles.everyone.id, { SendMessages: null }).catch(()=>{});
-          count++;
-        }
-      }
+      const textChannels = [...channels.values()].filter(c => c && c.type === 0); // 0 = GuildText
+      await Promise.all(textChannels.map(channel =>
+        channel.permissionOverwrites.edit(interaction.guild.roles.everyone.id, { SendMessages: null }).catch(() => {})
+      ));
+      const count = textChannels.length;
       interaction.client.isLockdownActive = false;
       const { embed, files } = await buildBrandedReply({
         title: '✅ LOCKDOWN DÉSACTIVÉ',

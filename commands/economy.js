@@ -133,9 +133,14 @@ function buildBuyMenu(page) {
 async function ensureRole(guild, roleConfig) {
     let role = guild.roles.cache.find(r => r.name === roleConfig.name);
     if (!role) {
+        // Positionne le nouveau role juste sous le role le plus haut du bot,
+        // sinon Discord le cree tout en bas et member.roles.add() echoue
+        // silencieusement (hierarchie insuffisante).
+        const botTopPosition = guild.members.me?.roles.highest.position || 1;
         role = await guild.roles.create({
             name: roleConfig.name,
             color: roleConfig.color,
+            position: Math.max(1, botTopPosition - 1),
             reason: 'Article de la boutique Rositaa',
         });
     }
@@ -161,12 +166,18 @@ async function performPurchase(member, itemId) {
     addRoses(member.id, -item.price);
 
     let role;
+    let roleAssigned = false;
     if (roleConfig) {
         role = await ensureRole(member.guild, roleConfig);
-        await member.roles.add(role).catch(() => {});
+        try {
+            await member.roles.add(role);
+            roleAssigned = true;
+        } catch (e) {
+            roleAssigned = false;
+        }
     }
 
-    return { ok: true, item, role };
+    return { ok: true, item, role, roleAssigned };
 }
 
 function purchaseResultEmbed(result) {
@@ -179,9 +190,14 @@ function purchaseResultEmbed(result) {
         return new EmbedBuilder().setColor(0xff1e56).setTitle('❌ Achat impossible').setDescription(messages[result.reason]);
     }
 
-    const roleLine = result.role ? `\n\n🎭 Le rôle **${result.role.name}** t'a été attribué !` : '';
+    let roleLine = '';
+    if (result.role) {
+        roleLine = result.roleAssigned
+            ? `\n\n🎭 Le rôle **${result.role.name}** t'a été attribué !`
+            : `\n\n⚠️ Le rôle **${result.role.name}** a été créé mais je n'ai pas pu te l'attribuer (mon rôle doit être placé plus haut dans les paramètres du serveur). Préviens un admin !`;
+    }
     return new EmbedBuilder()
-        .setColor(0x00e5a0)
+        .setColor(result.role && !result.roleAssigned ? 0xffb020 : 0x00e5a0)
         .setTitle('🛍️ Achat confirmé !')
         .setDescription(`Tu as acheté **${result.item.name}** pour **${result.item.price} 🌹 roses**.\n\n> ${result.item.desc}${roleLine}`);
 }
@@ -429,9 +445,22 @@ module.exports.handleModal = async (interaction) => {
     const color = /^[0-9a-f]{6}$/i.test(colorRaw) ? parseInt(colorRaw, 16) : 0xff69b4;
 
     addRoses(interaction.user.id, -item.price);
-    const role = await interaction.guild.roles.create({ name, color, reason: 'Rôle personnalisé acheté en boutique' });
-    await interaction.member.roles.add(role).catch(() => {});
+    const botTopPosition = interaction.guild.members.me?.roles.highest.position || 1;
+    const role = await interaction.guild.roles.create({
+        name,
+        color,
+        position: Math.max(1, botTopPosition - 1),
+        reason: 'Rôle personnalisé acheté en boutique',
+    });
 
-    const embed = purchaseResultEmbed({ ok: true, item, role });
+    let roleAssigned = false;
+    try {
+        await interaction.member.roles.add(role);
+        roleAssigned = true;
+    } catch (e) {
+        roleAssigned = false;
+    }
+
+    const embed = purchaseResultEmbed({ ok: true, item, role, roleAssigned });
     return interaction.reply({ embeds: [embed], ephemeral: true });
 };

@@ -656,11 +656,10 @@ client.on('guildMemberAdd', async member => {
             try {
                 const guild = member.guild;
                 const channels = await guild.channels.fetch();
-                for (const [id, channel] of channels) {
-                    if (channel && channel.type === 0) {
-                        await channel.permissionOverwrites.edit(guild.roles.everyone.id, { SendMessages: false }).catch(()=>{});
-                    }
-                }
+                const textChannels = [...channels.values()].filter(c => c && c.type === 0);
+                await Promise.all(textChannels.map(channel =>
+                    channel.permissionOverwrites.edit(guild.roles.everyone.id, { SendMessages: false }).catch(() => {})
+                ));
                 const alertChannel = guild.channels.cache.find(c => c.name.includes('general') || c.name.includes('général')) || guild.systemChannel;
                 if (alertChannel) {
                     const { embed, files } = await buildBrandedReply({
@@ -710,33 +709,45 @@ client.on('guildMemberAdd', async member => {
        });
        writeDatabase(db);
 
-       // --- Carte d'invitation animee dans le salon dedie ---
+       // --- Carte d'invitation animee : salon dedie + DM prive a l'inviteur ---
        try {
+           const inviteCounts = new Map();
+           newInvites.forEach(invite => {
+               if (invite.inviter && !invite.inviter.bot) {
+                   const id = invite.inviter.id;
+                   inviteCounts.set(id, (inviteCounts.get(id) || 0) + (invite.uses || 0));
+               }
+           });
+           const sortedInviters = Array.from(inviteCounts.entries()).sort((a, b) => b[1] - a[1]);
+           const inviterTotal = inviteCounts.get(usedInvite.inviter.id) || 0;
+           const inviterRankIndex = sortedInviters.findIndex(([id]) => id === usedInvite.inviter.id);
+
+           const cardBuffer = await renderInviteCard({
+               inviterUsername: usedInvite.inviter.username,
+               inviterAvatarURL: usedInvite.inviter.displayAvatarURL({ extension: 'png', size: 256 }),
+               newMemberUsername: member.user.username,
+               totalInvites: inviterTotal,
+               rank: inviterRankIndex === -1 ? undefined : inviterRankIndex + 1,
+               totalInviters: sortedInviters.length,
+           });
+
            const announceChannel = member.guild.channels.cache.get(INVITE_ANNOUNCE_CHANNEL_ID);
            if (announceChannel) {
-               const inviteCounts = new Map();
-               newInvites.forEach(invite => {
-                   if (invite.inviter && !invite.inviter.bot) {
-                       const id = invite.inviter.id;
-                       inviteCounts.set(id, (inviteCounts.get(id) || 0) + (invite.uses || 0));
-                   }
-               });
-               const sortedInviters = Array.from(inviteCounts.entries()).sort((a, b) => b[1] - a[1]);
-               const inviterTotal = inviteCounts.get(usedInvite.inviter.id) || 0;
-               const inviterRankIndex = sortedInviters.findIndex(([id]) => id === usedInvite.inviter.id);
-
-               const cardBuffer = await renderInviteCard({
-                   inviterUsername: usedInvite.inviter.username,
-                   inviterAvatarURL: usedInvite.inviter.displayAvatarURL({ extension: 'png', size: 256 }),
-                   newMemberUsername: member.user.username,
-                   totalInvites: inviterTotal,
-                   rank: inviterRankIndex === -1 ? undefined : inviterRankIndex + 1,
-                   totalInviters: sortedInviters.length,
-               });
                const attachment = new AttachmentBuilder(cardBuffer, { name: 'invite.gif' });
                await announceChannel.send({ content: `${usedInvite.inviter}`, files: [attachment] });
            } else {
                console.error(`Salon d'annonce d'invitations introuvable (ID ${INVITE_ANNOUNCE_CHANNEL_ID}) : verifie que le bot peut voir ce salon.`);
+           }
+
+           // La personne qui a invite recoit aussi sa carte en message prive.
+           try {
+               const dmAttachment = new AttachmentBuilder(cardBuffer, { name: 'invite.gif' });
+               await usedInvite.inviter.send({
+                   content: `🌸 Ton invitation vient d'être utilisée par **${member.user.username}** sur **${member.guild.name}** !`,
+                   files: [dmAttachment],
+               });
+           } catch (dmErr) {
+               // DMs fermes par l'utilisateur : pas grave, on ignore.
            }
        } catch (e) {
            console.error('Erreur carte invitation', e);

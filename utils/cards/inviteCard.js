@@ -5,19 +5,26 @@ const { getIcon } = require('./icons');
 const { encodeFrames } = require('./gif');
 
 const W = 900;
-const H = 320;
+const H = 340;
 const FRAMES = 16;
 const DELAY = 90;
 
-const FLOATING_ROSES = [
-  { x: 830, y: 60, size: 26, amp: 6, phase: 0, alpha: 0.16 },
-  { x: 860, y: 250, size: 32, amp: 7, phase: 2.2, alpha: 0.15 },
-  { x: 45, y: 260, size: 20, amp: 4, phase: 4.0, alpha: 0.13 },
-];
+const AVATAR_X = 128;
+const AVATAR_Y = 128;
+const AVATAR_R = 72;
+const TEXT_X = 230;
+
+const BOX_Y = 232;
+const BOX_H = 84;
+const BOX_GAP = 24;
+const BOX_MARGIN_X = 40;
+const BOX_W = (W - BOX_MARGIN_X * 2 - BOX_GAP) / 2;
 
 /**
  * Carte affichee quand un membre rejoint via un lien d'invitation : met en
- * avant celui qui a invite (avatar, total d'invitations, rang).
+ * avant celui qui a invite (avatar, total d'invitations, rang). Design
+ * epure : un seul point focal (avatar + nom), deux blocs de stats larges
+ * et bien espaces, pas de decoration superflue autour.
  * @param {object} opts
  * @param {string} opts.inviterUsername
  * @param {string} opts.inviterAvatarURL
@@ -35,14 +42,6 @@ async function renderInviteCard({ inviterUsername, inviterAvatarURL, newMemberUs
     loadImage(inviterAvatarURL).catch(() => null),
   ]);
 
-  const avatarX = 100;
-  const avatarY = 105;
-  const avatarR = 62;
-  const boxW = 260;
-  const boxH = 84;
-  const boxGap = 20;
-  const boxY = 172;
-
   const frames = [];
 
   for (let f = 0; f < FRAMES; f++) {
@@ -52,29 +51,21 @@ async function renderInviteCard({ inviterUsername, inviterAvatarURL, newMemberUs
 
     drawCardBackground(ctx, W, H, 28);
 
-    for (const rose of FLOATING_ROSES) {
-      const dy = Math.sin(t * Math.PI * 2 + rose.phase) * rose.amp;
-      ctx.save();
-      ctx.globalAlpha = rose.alpha;
-      ctx.drawImage(giftIcon, rose.x - rose.size / 2, rose.y + dy - rose.size / 2, rose.size, rose.size);
-      ctx.restore();
-    }
-
     const pulse = (Math.sin(t * Math.PI * 2) + 1) / 2;
     ctx.save();
     ctx.shadowColor = '#ff2fa0';
-    ctx.shadowBlur = 12 + pulse * 20;
-    ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+    ctx.shadowBlur = 10 + pulse * 16;
+    ctx.strokeStyle = 'rgba(255,255,255,0.6)';
     ctx.lineWidth = 2;
     roundRect(ctx, 6, 6, W - 12, H - 12, 24);
     ctx.stroke();
     ctx.restore();
 
-    // Avatar avec anneau
+    // Avatar avec anneau degrade
     ctx.save();
     ctx.beginPath();
-    ctx.arc(avatarX, avatarY, avatarR + 7, 0, Math.PI * 2);
-    const ring = ctx.createLinearGradient(avatarX - avatarR, avatarY - avatarR, avatarX + avatarR, avatarY + avatarR);
+    ctx.arc(AVATAR_X, AVATAR_Y, AVATAR_R + 8, 0, Math.PI * 2);
+    const ring = ctx.createLinearGradient(AVATAR_X - AVATAR_R, AVATAR_Y - AVATAR_R, AVATAR_X + AVATAR_R, AVATAR_Y + AVATAR_R);
     ring.addColorStop(0, '#ffe3f2');
     ring.addColorStop(1, '#ff5ca8');
     ctx.fillStyle = ring;
@@ -82,57 +73,64 @@ async function renderInviteCard({ inviterUsername, inviterAvatarURL, newMemberUs
     ctx.restore();
 
     ctx.save();
-    clipCircle(ctx, avatarX, avatarY, avatarR);
+    clipCircle(ctx, AVATAR_X, AVATAR_Y, AVATAR_R);
     if (avatarImg) {
-      ctx.drawImage(avatarImg, avatarX - avatarR, avatarY - avatarR, avatarR * 2, avatarR * 2);
+      ctx.drawImage(avatarImg, AVATAR_X - AVATAR_R, AVATAR_Y - AVATAR_R, AVATAR_R * 2, AVATAR_R * 2);
     } else {
       ctx.fillStyle = '#ffb6d9';
-      ctx.fillRect(avatarX - avatarR, avatarY - avatarR, avatarR * 2, avatarR * 2);
+      ctx.fillRect(AVATAR_X - AVATAR_R, AVATAR_Y - AVATAR_R, AVATAR_R * 2, AVATAR_R * 2);
     }
     ctx.restore();
 
-    const badgeR = 17;
+    const badgeCx = AVATAR_X + AVATAR_R * 0.72;
+    const badgeCy = AVATAR_Y + AVATAR_R * 0.72;
+    const badgeR = 19;
     ctx.beginPath();
-    ctx.arc(avatarX, avatarY - avatarR - 2, badgeR, 0, Math.PI * 2);
+    ctx.arc(badgeCx, badgeCy, badgeR, 0, Math.PI * 2);
     ctx.fillStyle = '#ff2d78';
     ctx.fill();
     ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 2.5;
+    ctx.lineWidth = 3;
     ctx.stroke();
-    ctx.drawImage(blossomIcon, avatarX - 12, avatarY - avatarR - 2 - 12, 24, 24);
+    ctx.drawImage(blossomIcon, badgeCx - 13, badgeCy - 13, 26, 26);
 
-    // Nom + sous-titre
+    // Nom + sous-titre : une seule colonne de texte, bien espacee verticalement
+    ctx.textAlign = 'left';
+    ctx.fillStyle = 'rgba(255,255,255,0.65)';
+    ctx.font = '600 15px "Poppins Medium"';
+    ctx.fillText('NOUVELLE INVITATION', TEXT_X, 76);
+
     ctx.fillStyle = '#ffffff';
-    ctx.font = '600 32px "Poppins SemiBold"';
-    ctx.fillText(inviterUsername, 190, 88);
+    ctx.font = '700 38px "Poppins Bold"';
+    ctx.fillText(inviterUsername, TEXT_X, 120);
 
-    ctx.font = '400 18px "Poppins"';
+    ctx.font = '400 20px "Poppins"';
     ctx.fillStyle = 'rgba(255,255,255,0.85)';
-    ctx.drawImage(giftIcon, 190, 100, 20, 20);
-    ctx.fillText(`vient d'inviter ${newMemberUsername} !`, 216, 118);
+    ctx.fillText(`vient d'inviter ${newMemberUsername} !`, TEXT_X, 154);
 
-    // Boites de stats
+    // Deux blocs de stats larges, repartis sur toute la largeur de la carte
     const statBox = (index, label, value, icon) => {
-      const x = 40 + index * (boxW + boxGap);
+      const x = BOX_MARGIN_X + index * (BOX_W + BOX_GAP);
       ctx.fillStyle = 'rgba(255,255,255,0.10)';
-      roundRect(ctx, x, boxY, boxW, boxH, 16);
+      roundRect(ctx, x, BOX_Y, BOX_W, BOX_H, 18);
       ctx.fill();
       ctx.strokeStyle = 'rgba(255,255,255,0.20)';
       ctx.lineWidth = 1;
-      roundRect(ctx, x, boxY, boxW, boxH, 16);
+      roundRect(ctx, x, BOX_Y, BOX_W, BOX_H, 18);
       ctx.stroke();
 
+      ctx.textAlign = 'left';
       ctx.fillStyle = 'rgba(255,255,255,0.65)';
-      ctx.font = '600 12px "Poppins Medium"';
-      ctx.fillText(label, x + 18, boxY + 27);
+      ctx.font = '600 14px "Poppins Medium"';
+      ctx.fillText(label, x + 24, BOX_Y + 30);
 
       ctx.fillStyle = '#ffffff';
-      ctx.font = '700 25px "Poppins Bold"';
+      ctx.font = '700 30px "Poppins Bold"';
       if (icon) {
-        ctx.drawImage(icon, x + 18, boxY + 40, 24, 24);
-        ctx.fillText(value, x + 48, boxY + 61);
+        ctx.drawImage(icon, x + 24, BOX_Y + 42, 28, 28);
+        ctx.fillText(value, x + 60, BOX_Y + 66);
       } else {
-        ctx.fillText(value, x + 18, boxY + 61);
+        ctx.fillText(value, x + 24, BOX_Y + 66);
       }
     };
 
