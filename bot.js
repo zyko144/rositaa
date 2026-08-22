@@ -329,7 +329,15 @@ client.on('interactionCreate', async interaction => {
       }
     }
   }
-  // Modal Submit handler
+  
+    // Shop pagination buttons
+    if (interaction.isButton() && interaction.customId.startsWith('shop_')) {
+        const economyMod = require('./commands/economy');
+        if (economyMod.handleButton) await economyMod.handleButton(interaction);
+        return;
+    }
+
+    // Modal Submit handler
   if (interaction.isModalSubmit()) {
     if (interaction.customId === 'giveaway_modal') {
       await interaction.deferReply({ ephemeral: true });
