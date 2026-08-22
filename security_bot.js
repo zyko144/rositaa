@@ -10,9 +10,9 @@ const DB_PATH = './database.json';
 const CHAT_LOGS_PATH = './chat_logs.json';
 const DM_LOGS_PATH = './dm_logs.json';
 
-module.exports = function initSecurityBot(app, io) {
+module.exports = function initSecurityBot(app, io, client) {
 
-if (!TOKEN) {
+if (false) {
     console.warn("⚠️ SECURITY_TOKEN manquant ! Le module de sécurité et le dashboard ne se connecteront pas à Discord.");
     return { logToDashboard: () => {} };
 }
@@ -231,20 +231,7 @@ io.on('connection', async (socket) => {
 });
 
 // --- DISCORD CLIENT ---
-const client = new Client({
-    intents: [
-        GatewayIntentBits.Guilds,
-        GatewayIntentBits.GuildMembers,
-        GatewayIntentBits.GuildMessages,
-        GatewayIntentBits.MessageContent,
-        GatewayIntentBits.GuildPresences,
-        GatewayIntentBits.DirectMessages,
-        GatewayIntentBits.GuildInvites,
-        GatewayIntentBits.GuildModeration,
-        GatewayIntentBits.GuildVoiceStates
-    ],
-    partials: [Partials.Message, Partials.Channel, Partials.Reaction, Partials.GuildMember]
-});
+
 
 const invitesCache = new Map();
 const ROOT_ADMINS = ['1516739861636448355']; // The main admin ID. User can add more in code.
@@ -1076,6 +1063,6 @@ client.on('interactionCreate', async interaction => {
     }
 });
 
-client.login(TOKEN);
+
 return { logToDashboard };
 };

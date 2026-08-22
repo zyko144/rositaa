@@ -78,7 +78,7 @@ const server = http.createServer(app);
 const io = new Server(server);
 
 // Initialiser le Security Bot sur le même serveur
-const securityBot = require('./security_bot.js')(app, io);
+
 
 app.get('/api/invites', async (req, res) => {
   console.log("API /api/invites appelee");
@@ -155,6 +155,7 @@ const client = new Client({
   partials: [Partials.Message, Partials.Channel, Partials.Reaction]
 });
 global.mainBotClient = client;
+const securityBot = require('./security_bot.js')(app, io, client);
 
 // Load Commands
 client.commands = new Collection();
