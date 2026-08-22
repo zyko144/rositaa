@@ -4,7 +4,7 @@ const {
     PermissionFlagsBits, AttachmentBuilder,
 } = require('discord.js');
 const { readDatabase, writeDatabase } = require('../utils/db');
-const { renderShopGif } = require('../utils/cards/shopGif');
+const { renderShopGif, renderShopPng } = require('../utils/cards/shopGif');
 const { renderRosesCard } = require('../utils/cards/rosesCard');
 
 function getDb() {
@@ -67,19 +67,29 @@ function pageItems(page) {
     return ALL_ITEMS.slice(start, start + ITEMS_PER_PAGE);
 }
 
-async function buildShopAttachment(page, userId) {
+/**
+ * @param {number} page
+ * @param {string} userId
+ * @param {boolean} animated GIF (premiere ouverture) ou PNG statique (pagination/achat,
+ *   ~8x plus rapide a generer donc plus reactif pour des clics repetes)
+ */
+async function buildShopAttachment(page, userId, animated = false) {
     const roses = getRoses(userId);
     const items = pageItems(page);
-
-    const buffer = await renderShopGif({
+    const opts = {
         category: items[0]?.category || '',
         items: items.map(i => ({ name: i.name, price: i.price, desc: i.desc })),
         roses,
         page,
         totalPages: TOTAL_PAGES,
-    });
+    };
 
-    return new AttachmentBuilder(buffer, { name: 'shop.gif' });
+    if (animated) {
+        const buffer = await renderShopGif(opts);
+        return new AttachmentBuilder(buffer, { name: 'shop.gif' });
+    }
+    const buffer = await renderShopPng(opts);
+    return new AttachmentBuilder(buffer, { name: 'shop.png' });
 }
 
 function buildButtons(page) {
@@ -239,7 +249,7 @@ module.exports.execute = async (interaction) => {
 
     if (commandName === 'shop') {
         await interaction.deferReply({ ephemeral: true });
-        const attachment = await buildShopAttachment(0, interaction.user.id);
+        const attachment = await buildShopAttachment(0, interaction.user.id, true);
         return interaction.editReply({ files: [attachment], components: [buildBuyMenu(0), buildButtons(0)] });
     }
 

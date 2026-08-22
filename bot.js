@@ -6,6 +6,9 @@ const path = require('path');
 const { initDatabase, readDatabase, writeDatabase } = require('./utils/db');
 const { buildBrandedReply, PINK_ALERT } = require('./utils/theme');
 const { buildManageRow: buildTicketManageRow, handleTicketManage } = require('./utils/ticketManage');
+const { renderInviteCard } = require('./utils/cards/inviteCard');
+
+const INVITE_ANNOUNCE_CHANNEL_ID = '1540784515453161472';
 
 const activeTicketCreations = new Set(); // Prevent double-click ticket race conditions
 
@@ -689,6 +692,36 @@ client.on('guildMemberAdd', async member => {
           timestamp: Date.now()
        });
        writeDatabase(db);
+
+       // --- Carte d'invitation animee dans le salon dedie ---
+       try {
+           const announceChannel = member.guild.channels.cache.get(INVITE_ANNOUNCE_CHANNEL_ID);
+           if (announceChannel) {
+               const inviteCounts = new Map();
+               newInvites.forEach(invite => {
+                   if (invite.inviter && !invite.inviter.bot) {
+                       const id = invite.inviter.id;
+                       inviteCounts.set(id, (inviteCounts.get(id) || 0) + (invite.uses || 0));
+                   }
+               });
+               const sortedInviters = Array.from(inviteCounts.entries()).sort((a, b) => b[1] - a[1]);
+               const inviterTotal = inviteCounts.get(usedInvite.inviter.id) || 0;
+               const inviterRankIndex = sortedInviters.findIndex(([id]) => id === usedInvite.inviter.id);
+
+               const cardBuffer = await renderInviteCard({
+                   inviterUsername: usedInvite.inviter.username,
+                   inviterAvatarURL: usedInvite.inviter.displayAvatarURL({ extension: 'png', size: 256 }),
+                   newMemberUsername: member.user.username,
+                   totalInvites: inviterTotal,
+                   rank: inviterRankIndex === -1 ? undefined : inviterRankIndex + 1,
+                   totalInviters: sortedInviters.length,
+               });
+               const attachment = new AttachmentBuilder(cardBuffer, { name: 'invite.gif' });
+               await announceChannel.send({ content: `${usedInvite.inviter}`, files: [attachment] });
+           }
+       } catch (e) {
+           console.error('Erreur carte invitation', e);
+       }
     }
 
     let welcomeChannel = member.guild.channels.cache.find(c => c.name.includes('bienvenue') && c.type === ChannelType.GuildText);
