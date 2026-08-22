@@ -4,7 +4,7 @@ const fs = require('fs');
 require('dotenv').config();
 const path = require('path');
 const { initDatabase, readDatabase, writeDatabase } = require('./utils/db');
-const { brandedEmbed, PINK_ALERT } = require('./utils/theme');
+const { buildBrandedReply, PINK_ALERT } = require('./utils/theme');
 const { buildManageRow: buildTicketManageRow, handleTicketManage } = require('./utils/ticketManage');
 
 const activeTicketCreations = new Set(); // Prevent double-click ticket race conditions
@@ -643,13 +643,13 @@ client.on('guildMemberAdd', async member => {
                 }
                 const alertChannel = guild.channels.cache.find(c => c.name.includes('general') || c.name.includes('général')) || guild.systemChannel;
                 if (alertChannel) {
-                    const alertEmbed = brandedEmbed({
+                    const { embed, files } = await buildBrandedReply({
                         title: '🚨 ALERTE ANTI-RAID AUTOMATIQUE',
                         description: "Une attaque massive a été détectée (trop d'arrivées en quelques secondes).\nLe bot a **VERROUILLÉ** automatiquement tous les salons.\n\nAdministrateurs : utilisez `/unlockall` quand le calme sera revenu.",
                         banner: 'alert',
                         color: PINK_ALERT,
                     });
-                    alertChannel.send({ embeds: [alertEmbed] });
+                    alertChannel.send({ embeds: [embed], files });
                 }
             } catch(e) { console.error('Erreur auto-lockdown', e); }
         }

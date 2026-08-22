@@ -274,7 +274,7 @@ module.exports.execute = async (interaction) => {
             rank: rankIndex === -1 ? undefined : rankIndex + 1,
             totalMembers: sorted.length,
         });
-        const attachment = new AttachmentBuilder(buffer, { name: 'roses.png' });
+        const attachment = new AttachmentBuilder(buffer, { name: 'roses.gif' });
         return interaction.editReply({ files: [attachment] });
     }
 

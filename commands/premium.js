@@ -1,6 +1,6 @@
 const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, PermissionFlagsBits, AttachmentBuilder, ModalBuilder, TextInputBuilder, TextInputStyle } = require('discord.js');
 const fs = require('fs');
-const { brandedEmbed, PINK_ALERT } = require('../utils/theme');
+const { brandedEmbed, buildBrandedReply, PINK_ALERT } = require('../utils/theme');
 
 let rawKeys = process.env.GEMINI_API_KEYS || '';
 let apiKeys = rawKeys.split(',').map(k => k.trim()).filter(k => k.length > 0);
@@ -98,13 +98,13 @@ module.exports.execute = async (interaction) => {
         }
       }
       interaction.client.isLockdownActive = true;
-      const embed = brandedEmbed({
+      const { embed, files } = await buildBrandedReply({
         title: '🚨 LOCKDOWN ACTIVÉ',
         description: `Le serveur est en mode Anti-Raid. **${count}** salons ont été verrouillés.\nLes membres normaux ne peuvent plus parler.\nUtilisez \`/unlockall\` pour annuler.`,
         banner: 'alert',
         color: PINK_ALERT,
       });
-      return interaction.editReply({ embeds: [embed] });
+      return interaction.editReply({ embeds: [embed], files });
     } catch (e) {
       return interaction.editReply({ embeds: [brandedEmbed({ title: '❌ Erreur', description: e.message, color: PINK_ALERT })] });
     }
@@ -122,19 +122,19 @@ module.exports.execute = async (interaction) => {
         }
       }
       interaction.client.isLockdownActive = false;
-      const embed = brandedEmbed({
+      const { embed, files } = await buildBrandedReply({
         title: '✅ LOCKDOWN DÉSACTIVÉ',
         description: `**${count}** salons ont été déverrouillés. Le serveur reprend son fonctionnement normal.`,
         banner: 'success',
       });
-      return interaction.editReply({ embeds: [embed] });
+      return interaction.editReply({ embeds: [embed], files });
     } catch (e) {
       return interaction.editReply({ embeds: [brandedEmbed({ title: '❌ Erreur', description: e.message, color: PINK_ALERT })] });
     }
   }
 
   if (commandName === 'setup_verification') {
-    const embed = brandedEmbed({
+    const { embed, files } = await buildBrandedReply({
       title: '🛡️ Vérification Anti-Raid',
       description: 'Pour accéder au reste du serveur, prouve que tu es humain en cliquant sur le bouton ci-dessous.',
       banner: 'success',
@@ -144,12 +144,12 @@ module.exports.execute = async (interaction) => {
       new ButtonBuilder().setCustomId('verify_member').setLabel('Se vérifier').setEmoji('✅').setStyle(ButtonStyle.Success)
     );
 
-    await interaction.channel.send({ embeds: [embed], components: [row] });
+    await interaction.channel.send({ embeds: [embed], files, components: [row] });
     return interaction.reply({ content: '✅ Panneau de vérification installé.', ephemeral: true });
   }
 
   if (commandName === 'setup_vip') {
-    const embed = brandedEmbed({
+    const { embed, files } = await buildBrandedReply({
       title: '💎 AVANTAGES EXCLUSIFS VIP',
       description: "Débloque des super-pouvoirs en devenant membre Premium de Rositaa 🌸\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
       banner: 'cosmetic',
@@ -161,20 +161,21 @@ module.exports.execute = async (interaction) => {
         { name: '📈 Consultant Business (`/business_plan`)', value: "Demande à l'IA de structurer et d'écrire un business plan complet.", inline: false },
         { name: '🚀 Sans Limites', value: 'Tes requêtes sont prioritaires sur le serveur !', inline: false },
       ],
-    }).setFooter({ text: 'Soutiens le serveur et obtiens le rôle Premium ! 🌸' });
+    });
+    embed.setFooter({ text: 'Soutiens le serveur et obtiens le rôle Premium ! 🌸' });
 
-    await interaction.channel.send({ embeds: [embed] });
+    await interaction.channel.send({ embeds: [embed], files });
     return interaction.reply({ content: '✅ Panneau VIP installé.', ephemeral: true });
   }
 
   if (commandName === 'setup_roles') {
-    const embed = brandedEmbed({
+    const { embed, files } = await buildBrandedReply({
       title: '🎭 Choisis ton Profil',
       description: 'Clique sur les emojis pour recevoir le rôle correspondant :\n\n💻 — **Développeur**\n🤖 — **Passionné IA**\n📖 — **Apprenant**',
       banner: 'fun',
     });
 
-    const msg = await interaction.channel.send({ embeds: [embed] });
+    const msg = await interaction.channel.send({ embeds: [embed], files });
     await msg.react('💻'); await msg.react('🤖'); await msg.react('📖');
     return interaction.reply({ content: '✅ Panneau de rôles installé.', ephemeral: true });
   }

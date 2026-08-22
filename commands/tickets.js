@@ -1,6 +1,6 @@
 
 const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
-const { brandedEmbed, PINK_ALERT } = require('../utils/theme');
+const { brandedEmbed, buildBrandedReply, PINK_ALERT } = require('../utils/theme');
 
 module.exports = [
   new SlashCommandBuilder().setName('ticket_add').setDescription('Ajoute un membre au ticket')
@@ -23,7 +23,8 @@ module.exports.execute = async (interaction) => {
   if (commandName === 'ticket_add') {
     const target = options.getUser('utilisateur');
     await channel.permissionOverwrites.edit(target.id, { ViewChannel: true, SendMessages: true });
-    return interaction.reply({ embeds: [brandedEmbed({ title: '✅ Membre ajouté', description: `${target} a été ajouté au ticket.`, banner: 'moderation' })] });
+    const { embed, files } = await buildBrandedReply({ title: '✅ Membre ajouté', description: `${target} a été ajouté au ticket.`, banner: 'moderation' });
+    return interaction.reply({ embeds: [embed], files });
   }
 
   if (commandName === 'ticket_remove') {

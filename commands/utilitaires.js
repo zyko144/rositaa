@@ -1,8 +1,8 @@
 
 const { SlashCommandBuilder, ChannelType, PermissionFlagsBits, ActionRowBuilder, StringSelectMenuBuilder } = require('discord.js');
-const { brandedEmbed } = require('../utils/theme');
+const { brandedEmbed, buildBrandedReply } = require('../utils/theme');
 
-async function buildInviteLinkEmbed(interaction) {
+async function buildInviteLinkReply(interaction) {
   const { guild } = interaction;
   let channel = interaction.channel;
   if (!channel || channel.type !== ChannelType.GuildText) {
@@ -20,7 +20,7 @@ async function buildInviteLinkEmbed(interaction) {
     if (invite) inviteUrl = invite.url;
   }
 
-  return brandedEmbed({
+  return buildBrandedReply({
     title: '📨 Ton lien d\'invitation',
     banner: 'gift',
     description: `Pour inviter des amis et participer au concours d'invitations :\n\n` +
@@ -33,13 +33,13 @@ async function buildInviteLinkEmbed(interaction) {
   });
 }
 
-async function buildMyInvitesEmbed(interaction, target) {
+async function buildMyInvitesReply(interaction, target) {
   const { guild } = interaction;
   const invites = await guild.invites.fetch();
   const userInvites = invites.filter(i => i.inviter && i.inviter.id === target.id);
   const totalUses = userInvites.reduce((sum, i) => sum + (i.uses || 0), 0);
 
-  return brandedEmbed({
+  return buildBrandedReply({
     title: `📊 Invitations de ${target.username}`,
     description: `${target.toString()} a invité **${totalUses}** membre(s) sur le serveur.`,
     thumbnail: target.displayAvatarURL(),
@@ -47,7 +47,7 @@ async function buildMyInvitesEmbed(interaction, target) {
   });
 }
 
-async function buildTopInvitesEmbed(interaction) {
+async function buildTopInvitesReply(interaction) {
   const { guild } = interaction;
   const invites = await guild.invites.fetch();
   const members = await guild.members.fetch();
@@ -67,7 +67,7 @@ async function buildTopInvitesEmbed(interaction) {
 
   const sorted = Array.from(inviteCounts.values()).sort((a, b) => b.uses - a.uses).slice(0, 15);
   if (sorted.length === 0) {
-    return brandedEmbed({ title: 'Aucun membre trouvé.', banner: 'leaderboard' });
+    return buildBrandedReply({ title: 'Aucun membre trouvé.', banner: 'leaderboard' });
   }
 
   const description = sorted
@@ -77,7 +77,7 @@ async function buildTopInvitesEmbed(interaction) {
     })
     .join('\n');
 
-  return brandedEmbed({ title: '🏆 Classement des Recruteurs', description, thumbnail: guild.iconURL(), banner: 'leaderboard' });
+  return buildBrandedReply({ title: '🏆 Classement des Recruteurs', description, thumbnail: guild.iconURL(), banner: 'leaderboard' });
 }
 
 function buildInvitesPanelRow() {
@@ -122,12 +122,12 @@ module.exports.execute = async (interaction) => {
   const { commandName, options, guild, client } = interaction;
 
   if (commandName === 'ping') {
-    const embed = brandedEmbed({ title: '🏓 Pong !', description: `Latence de l'API : **${client.ws.ping}ms**`, banner: 'fun' });
-    return interaction.reply({ embeds: [embed] });
+    const { embed, files } = await buildBrandedReply({ title: '🏓 Pong !', description: `Latence de l'API : **${client.ws.ping}ms**`, banner: 'fun' });
+    return interaction.reply({ embeds: [embed], files });
   }
 
   if (commandName === 'serverinfo') {
-    const embed = brandedEmbed({
+    const { embed, files } = await buildBrandedReply({
       title: `🌸 ${guild.name}`,
       thumbnail: guild.iconURL(),
       banner: 'fun',
@@ -136,12 +136,12 @@ module.exports.execute = async (interaction) => {
         { name: '📅 Créé le', value: `<t:${Math.floor(guild.createdTimestamp / 1000)}:R>`, inline: true },
       ],
     });
-    return interaction.reply({ embeds: [embed] });
+    return interaction.reply({ embeds: [embed], files });
   }
 
   if (commandName === 'userinfo') {
     const target = options.getMember('utilisateur') || interaction.member;
-    const embed = brandedEmbed({
+    const { embed, files } = await buildBrandedReply({
       title: `🌸 ${target.user.tag}`,
       thumbnail: target.user.displayAvatarURL(),
       banner: 'profile',
@@ -150,7 +150,7 @@ module.exports.execute = async (interaction) => {
         { name: '🐣 Compte créé', value: `<t:${Math.floor(target.user.createdTimestamp / 1000)}:R>`, inline: true },
       ],
     });
-    return interaction.reply({ embeds: [embed] });
+    return interaction.reply({ embeds: [embed], files });
   }
 
   if (commandName === 'avatar') {
@@ -160,7 +160,7 @@ module.exports.execute = async (interaction) => {
   }
 
   if (commandName === 'botinfo') {
-    const embed = brandedEmbed({
+    const { embed, files } = await buildBrandedReply({
       title: '🤖 Statistiques de Rositaa',
       banner: 'fun',
       fields: [
@@ -168,13 +168,13 @@ module.exports.execute = async (interaction) => {
         { name: '💾 Mémoire', value: `${Math.round(process.memoryUsage().rss / 1024 / 1024)} MB`, inline: true },
       ],
     });
-    return interaction.reply({ embeds: [embed] });
+    return interaction.reply({ embeds: [embed], files });
   }
 
   if (commandName === 'roles') {
     const roles = guild.roles.cache.map(r => r.toString()).join(', ');
-    const embed = brandedEmbed({ title: '🎭 Rôles du serveur', description: roles.substring(0, 3900), banner: 'fun' });
-    return interaction.reply({ embeds: [embed] });
+    const { embed, files } = await buildBrandedReply({ title: '🎭 Rôles du serveur', description: roles.substring(0, 3900), banner: 'fun' });
+    return interaction.reply({ embeds: [embed], files });
   }
 
   if (commandName === 'sondage') {
@@ -188,13 +188,10 @@ module.exports.execute = async (interaction) => {
     const emojis = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣'];
     const description = choices.map((choice, index) => `${emojis[index]} ${choice}`).join('\n\n');
 
-    const embed = brandedEmbed({
-      title: `📊 ${question}`,
-      description,
-      banner: 'fun',
-    }).setFooter({ text: `Sondage créé par ${interaction.user.tag}`, iconURL: interaction.user.displayAvatarURL() });
+    const { embed, files } = await buildBrandedReply({ title: `📊 ${question}`, description, banner: 'fun' });
+    embed.setFooter({ text: `Sondage créé par ${interaction.user.tag}`, iconURL: interaction.user.displayAvatarURL() });
 
-    const msg = await interaction.reply({ embeds: [embed], fetchReply: true });
+    const msg = await interaction.reply({ embeds: [embed], files, fetchReply: true });
     for (let i = 0; i < choices.length; i++) {
       await msg.react(emojis[i]);
     }
@@ -207,14 +204,15 @@ module.exports.execute = async (interaction) => {
       return interaction.reply({ embeds: [brandedEmbed({ title: '❌ Non autorisé', color: 0xFF1E56 })], ephemeral: true });
     }
     await interaction.channel.send(msg);
-    return interaction.reply({ embeds: [brandedEmbed({ title: '✅ Message envoyé', banner: 'success' })], ephemeral: true });
+    const { embed, files } = await buildBrandedReply({ title: '✅ Message envoyé', banner: 'success' });
+    return interaction.reply({ embeds: [embed], files, ephemeral: true });
   }
 
   if (commandName === 'invites') {
     const target = options.getUser('utilisateur') || interaction.user;
     try {
-      const embed = await buildMyInvitesEmbed(interaction, target);
-      return interaction.reply({ embeds: [embed] });
+      const { embed, files } = await buildMyInvitesReply(interaction, target);
+      return interaction.reply({ embeds: [embed], files });
     } catch (err) {
       console.error(err);
       return interaction.reply({ embeds: [brandedEmbed({ title: '❌ Erreur', description: `Impossible de récupérer les données : \`${err.message}\``, color: 0xFF1E56 })], ephemeral: true });
@@ -223,8 +221,8 @@ module.exports.execute = async (interaction) => {
 
   if (commandName === 'topinvites') {
     try {
-      const embed = await buildTopInvitesEmbed(interaction);
-      return interaction.reply({ embeds: [embed] });
+      const { embed, files } = await buildTopInvitesReply(interaction);
+      return interaction.reply({ embeds: [embed], files });
     } catch (err) {
       console.error(err);
       return interaction.reply({ embeds: [brandedEmbed({ title: '❌ Erreur', description: `Impossible de récupérer les données : \`${err.message}\``, color: 0xFF1E56 })], ephemeral: true });
@@ -233,8 +231,8 @@ module.exports.execute = async (interaction) => {
 
   if (commandName === 'invite') {
     try {
-      const embed = await buildInviteLinkEmbed(interaction);
-      return interaction.reply({ embeds: [embed] });
+      const { embed, files } = await buildInviteLinkReply(interaction);
+      return interaction.reply({ embeds: [embed], files });
     } catch (err) {
       console.error(err);
       return interaction.reply({ embeds: [brandedEmbed({ title: '❌ Erreur', description: 'Assure-toi que le bot a la permission "Gérer le serveur" et "Créer une invitation".', color: 0xFF1E56 })], ephemeral: true });
@@ -242,7 +240,7 @@ module.exports.execute = async (interaction) => {
   }
 
   if (commandName === 'setup_invites') {
-    const embed = brandedEmbed({
+    const { embed, files } = await buildBrandedReply({
       title: '📨 Centre d\'invitations Rositaa',
       banner: 'gift',
       description:
@@ -252,7 +250,7 @@ module.exports.execute = async (interaction) => {
         '**🏆 Classement** — qui sont les meilleurs recruteurs du serveur ?\n\n' +
         'Choisis une option dans le menu ci-dessous 👇',
     });
-    await interaction.channel.send({ embeds: [embed], components: [buildInvitesPanelRow()] });
+    await interaction.channel.send({ embeds: [embed], files, components: [buildInvitesPanelRow()] });
     return interaction.reply({ content: '✅ Panneau d\'invitations installé.', ephemeral: true });
   }
 };
@@ -264,12 +262,12 @@ module.exports.handleSelectMenu = async (interaction) => {
   const choice = interaction.values[0];
 
   try {
-    let embed;
-    if (choice === 'link') embed = await buildInviteLinkEmbed(interaction);
-    else if (choice === 'mine') embed = await buildMyInvitesEmbed(interaction, interaction.user);
-    else embed = await buildTopInvitesEmbed(interaction);
+    let result;
+    if (choice === 'link') result = await buildInviteLinkReply(interaction);
+    else if (choice === 'mine') result = await buildMyInvitesReply(interaction, interaction.user);
+    else result = await buildTopInvitesReply(interaction);
 
-    return interaction.editReply({ embeds: [embed] });
+    return interaction.editReply({ embeds: [result.embed], files: result.files });
   } catch (err) {
     console.error(err);
     return interaction.editReply({ embeds: [brandedEmbed({ title: '❌ Erreur', description: `Impossible de récupérer les données : \`${err.message}\``, color: 0xFF1E56 })] });

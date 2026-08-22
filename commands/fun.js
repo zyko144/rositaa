@@ -1,5 +1,5 @@
 const { SlashCommandBuilder } = require('discord.js');
-const { brandedEmbed } = require('../utils/theme');
+const { buildBrandedReply } = require('../utils/theme');
 
 module.exports = [
   new SlashCommandBuilder().setName('8ball').setDescription('Pose une question magique')
@@ -28,7 +28,7 @@ module.exports.execute = async (interaction) => {
   if (commandName === '8ball') {
     const responses = ['Oui absolument 🌸', 'Non, jamais', 'Peut-être...', 'C\'est certain !', 'Je ne pense pas', 'Demande plus tard'];
     const r = responses[Math.floor(Math.random() * responses.length)];
-    const embed = brandedEmbed({
+    const { embed, files } = await buildBrandedReply({
       title: '🎱 Boule Magique',
       banner: 'fun',
       fields: [
@@ -36,19 +36,19 @@ module.exports.execute = async (interaction) => {
         { name: 'Réponse', value: `**${r}**` },
       ],
     });
-    return interaction.reply({ embeds: [embed] });
+    return interaction.reply({ embeds: [embed], files });
   }
 
   if (commandName === 'coinflip_fun') {
     const res = Math.random() < 0.5 ? 'Pile' : 'Face';
-    const embed = brandedEmbed({ title: '🪙 Pile ou Face', description: `La pièce est tombée sur : **${res}** !`, banner: 'fun' });
-    return interaction.reply({ embeds: [embed] });
+    const { embed, files } = await buildBrandedReply({ title: '🪙 Pile ou Face', description: `La pièce est tombée sur : **${res}** !`, banner: 'fun' });
+    return interaction.reply({ embeds: [embed], files });
   }
 
   if (commandName === 'roll') {
     const res = Math.floor(Math.random() * 100) + 1;
-    const embed = brandedEmbed({ title: '🎲 Lancer de dé', description: `Tu as obtenu **${res}** (sur 100) !`, banner: 'fun' });
-    return interaction.reply({ embeds: [embed] });
+    const { embed, files } = await buildBrandedReply({ title: '🎲 Lancer de dé', description: `Tu as obtenu **${res}** (sur 100) !`, banner: 'fun' });
+    return interaction.reply({ embeds: [embed], files });
   }
 
   if (commandName === 'joke') {
@@ -57,13 +57,13 @@ module.exports.execute = async (interaction) => {
       'Que fait une fraise sur un cheval ? Tagada tagada !',
       "C'est l'histoire d'un pingouin qui respire par les fesses. Un jour il s'assoit et il meurt.",
     ];
-    const embed = brandedEmbed({ title: '😂 Blague du jour', description: jokes[Math.floor(Math.random() * jokes.length)], banner: 'fun' });
-    return interaction.reply({ embeds: [embed] });
+    const { embed, files } = await buildBrandedReply({ title: '😂 Blague du jour', description: jokes[Math.floor(Math.random() * jokes.length)], banner: 'fun' });
+    return interaction.reply({ embeds: [embed], files });
   }
 
   if (commandName === 'meme') {
-    const embed = brandedEmbed({ title: '🖼️ Meme du jour', description: '*(API de memes à brancher ici)*', banner: 'fun' });
-    return interaction.reply({ embeds: [embed] });
+    const { embed, files } = await buildBrandedReply({ title: '🖼️ Meme du jour', description: '*(API de memes à brancher ici)*', banner: 'fun' });
+    return interaction.reply({ embeds: [embed], files });
   }
 
   if (commandName === 'rps') {
@@ -73,23 +73,23 @@ module.exports.execute = async (interaction) => {
     let result = 'Égalité !';
     if ((user === 'pierre' && botC === 'ciseaux') || (user === 'feuille' && botC === 'pierre') || (user === 'ciseaux' && botC === 'feuille')) result = 'Tu as gagné ! 🏆';
     else if (user !== botC) result = "J'ai gagné ! 🤖";
-    const embed = brandedEmbed({
+    const { embed, files } = await buildBrandedReply({
       title: '✊✋✌️ Pierre Feuille Ciseaux',
       description: `Tu as joué **${user}**, j'ai joué **${botC}**.\n\n**${result}**`,
       banner: 'fun',
     });
-    return interaction.reply({ embeds: [embed] });
+    return interaction.reply({ embeds: [embed], files });
   }
 
   if (commandName === 'lovecalc') {
     const u1 = options.getUser('user1');
     const u2 = options.getUser('user2');
     const score = Math.floor(Math.random() * 101);
-    const embed = brandedEmbed({
+    const { embed, files } = await buildBrandedReply({
       title: '💖 Love Calculator',
       description: `Le taux d'amour entre ${u1} et ${u2} est de...\n\n## 💗 ${score}% 💗`,
       banner: 'fun',
     });
-    return interaction.reply({ embeds: [embed] });
+    return interaction.reply({ embeds: [embed], files });
   }
 };
