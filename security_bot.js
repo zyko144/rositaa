@@ -5,7 +5,7 @@ const path = require('path');
 
 // --- SECRETS & CONFIG ---
 const TOKEN = process.env.SECURITY_TOKEN;
-const DB_PATH = './database.json';
+const { readDatabase, writeDatabase } = require('./utils/db');
 
 const CHAT_LOGS_PATH = './chat_logs.json';
 const DM_LOGS_PATH = './dm_logs.json';
@@ -253,12 +253,11 @@ function levenshtein(a, b) {
 }
 
 function getDb() {
-    if (!fs.existsSync(DB_PATH)) return {};
-    return JSON.parse(fs.readFileSync(DB_PATH, 'utf8'));
+    return readDatabase();
 }
 
 function saveDb(db) {
-    fs.writeFileSync(DB_PATH, JSON.stringify(db, null, 2));
+    writeDatabase(db);
 }
 
 function getDbStats() {

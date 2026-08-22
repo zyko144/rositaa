@@ -4,6 +4,7 @@ const fs = require('fs');
 const discordTranscripts = require('discord-html-transcripts');
 require('dotenv').config();
 const path = require('path');
+const { initDatabase, readDatabase, writeDatabase } = require('./utils/db');
 
 const activeTicketCreations = new Set(); // Prevent double-click ticket race conditions
 
@@ -44,13 +45,8 @@ app.get('/api/invites', async (req, res) => {
     mergedLeaderboard.sort((a, b) => b.uses - a.uses);
 
     console.log("Reading DB...");
-    const dbPath = './database.json';
-    let history = [];
-    if (fs.existsSync(dbPath)) {
-       const db = JSON.parse(fs.readFileSync(dbPath, 'utf8'));
-       history = db.invite_history || [];
-    }
-    
+    const history = readDatabase().invite_history || [];
+
     console.log("Sending JSON response");
     res.json({ leaderboard: mergedLeaderboard.slice(0, 10), history: history });
   } catch (err) {
@@ -120,7 +116,6 @@ const REACTION_ROLES = {
 
 // Anti-Ping Mots interdits
 const BANNED_PINGS = ['1xpj', '1xpj2', '6t2b'];
-const dbPath = './database.json';
 
 // --- EVENTS ---
 
@@ -146,28 +141,22 @@ client.on('messageCreate', async (message) => {
         // Cooldown de 1 minute pour emp�cher le spam
         if (now - lastMsgTime > 60000) {
             client.ecoCooldowns.set(message.author.id, now);
-            const dbPath = require('path').join(__dirname, 'database.json');
-            let db = {};
-            if (fs.existsSync(dbPath)) {
-                try { db = JSON.parse(fs.readFileSync(dbPath, 'utf8')); } catch(e) {}
-            }
+            const db = readDatabase();
             if (!db.economy) db.economy = {};
             if (!db.economy[message.author.id]) db.economy[message.author.id] = { roses: 0 };
-            
-            // Gain al�atoire de 1 � 3 roses par message
+
+            // Gain aleatoire de 1 a 3 roses par message
             const earned = Math.floor(Math.random() * 3) + 1;
             db.economy[message.author.id].roses += earned;
-            fs.writeFileSync(dbPath, JSON.stringify(db, null, 2));
+            writeDatabase(db);
         }
     }
 
   if (message.content === '!reset-top' && message.member && message.member.permissions.has(PermissionFlagsBits.Administrator)) {
-      const dbPath = require('path').join(__dirname, 'database.json');
-      let db = {};
-      if (require('fs').existsSync(dbPath)) db = JSON.parse(require('fs').readFileSync(dbPath, 'utf8'));
+      const db = readDatabase();
       db.invite_history = [];
       db.invite_warns = {};
-      require('fs').writeFileSync(dbPath, JSON.stringify(db, null, 2));
+      writeDatabase(db);
 
       try {
           const invites = await message.guild.invites.fetch();
@@ -191,10 +180,8 @@ client.on('messageCreate', async (message) => {
       const fetchedMsg = await message.channel.messages.fetch(msgId);
       if (!fetchedMsg) return message.reply("❌ Message introuvable dans ce salon.");
       
-      const dbPath = require('path').join(__dirname, 'database.json');
-      let db = {};
-      if (require('fs').existsSync(dbPath)) db = JSON.parse(require('fs').readFileSync(dbPath, 'utf8'));
-      
+      const db = readDatabase();
+
       let participants = [];
       let prize = "Lot inconnu";
       
@@ -266,8 +253,7 @@ client.on('messageCreate', async (message) => {
   } catch(e) {}
 
   // --- Database Load ---
-  let db = { warnings: {}, levels: {} };
-  if (fs.existsSync(dbPath)) db = JSON.parse(fs.readFileSync(dbPath, 'utf8'));
+  const db = readDatabase();
   if (!db.warnings) db.warnings = {};
   if (!db.levels) db.levels = {};
 
@@ -284,9 +270,9 @@ client.on('messageCreate', async (message) => {
     
     if (!db.warnings[message.author.id]) db.warnings[message.author.id] = [];
     db.warnings[message.author.id].push({ reason: 'Ping illégal (Anti-Ping System)', by: client.user.tag, date: new Date().toISOString() });
-    
-    fs.writeFileSync(dbPath, JSON.stringify(db, null, 2));
-    
+
+    writeDatabase(db);
+
     const warnCount = db.warnings[message.author.id].length;
     let replyMsg = '⚠️ <@' + message.author.id + '>, les pings de type 1xpj/6t2b sont strictement interdits ! Avertissement ' + warnCount + '/3.';
     
@@ -295,7 +281,7 @@ client.on('messageCreate', async (message) => {
       try {
         await message.member.timeout(7 * 24 * 60 * 60 * 1000, '3 Avertissements: Pings illégaux');
         delete db.warnings[message.author.id]; // Reset warns after timeout
-        fs.writeFileSync(dbPath, JSON.stringify(db, null, 2));
+        writeDatabase(db);
       } catch(e) { console.error('Erreur Timeout', e); }
     }
     
@@ -366,11 +352,9 @@ client.on('interactionCreate', async interaction => {
       if (!client.giveaways) client.giveaways = {};
       client.giveaways[giveawayMsg.id] = [];
       
-      const dbPath = require('path').join(__dirname, 'database.json');
-      let db = {};
-      if (require('fs').existsSync(dbPath)) db = JSON.parse(require('fs').readFileSync(dbPath, 'utf8'));
+      const db = readDatabase();
       if (!db.active_giveaways) db.active_giveaways = {};
-      
+
       db.active_giveaways[giveawayMsg.id] = {
         prize: prize,
         endTime: Date.now() + timeInMinutes * 60000,
@@ -378,7 +362,7 @@ client.on('interactionCreate', async interaction => {
         channelId: interaction.channel.id,
         hostId: interaction.user.id
       };
-      require('fs').writeFileSync(dbPath, JSON.stringify(db, null, 2));
+      writeDatabase(db);
       
       setTimeout(() => endGiveaway(giveawayMsg.id, db.active_giveaways[giveawayMsg.id]), timeInMinutes * 60000);
     }
@@ -389,14 +373,9 @@ client.on('interactionCreate', async interaction => {
     try {
       if (interaction.customId === 'join_giveaway') {
         // Vérification de la liste noire du Giveaway
-        const dbPath = './database.json';
-        if (fs.existsSync(dbPath)) {
-          try {
-            const db = JSON.parse(fs.readFileSync(dbPath, 'utf8'));
-            if (db.giveaway_blacklist && db.giveaway_blacklist.includes(interaction.user.id)) {
-              return interaction.reply({ content: '❌ **Accès refusé :** Tu es banni définitivement de la participation aux Giveaways sur ce serveur.', ephemeral: true });
-            }
-          } catch(e) {}
+        const blacklistCheck = readDatabase();
+        if (blacklistCheck.giveaway_blacklist && blacklistCheck.giveaway_blacklist.includes(interaction.user.id)) {
+          return interaction.reply({ content: '❌ **Accès refusé :** Tu es banni définitivement de la participation aux Giveaways sur ce serveur.', ephemeral: true });
         }
 
         if (!client.giveaways) client.giveaways = {};
@@ -455,13 +434,10 @@ client.on('interactionCreate', async interaction => {
           }
           
           // Save DB
-          const dbPath2 = require('path').join(__dirname, 'database.json');
-          if (require('fs').existsSync(dbPath2)) {
-            const db2 = JSON.parse(require('fs').readFileSync(dbPath2, 'utf8'));
-            if (db2.active_giveaways && db2.active_giveaways[interaction.message.id]) {
-               db2.active_giveaways[interaction.message.id].participants = participants;
-               require('fs').writeFileSync(dbPath2, JSON.stringify(db2, null, 2));
-            }
+          const giveawayDb = readDatabase();
+          if (giveawayDb.active_giveaways && giveawayDb.active_giveaways[interaction.message.id]) {
+            giveawayDb.active_giveaways[interaction.message.id].participants = participants;
+            writeDatabase(giveawayDb);
           }
 
           await interaction.reply({ content: '🎉 Tu participes bien au giveaway !', ephemeral: true });
@@ -672,19 +648,16 @@ client.on('guildMemberAdd', async member => {
            }
        } catch(e) {}
 
-       const dbPath = './database.json';
-       if (fs.existsSync(dbPath)) {
-          const db = JSON.parse(fs.readFileSync(dbPath, 'utf8'));
-          if (!db.invite_history) db.invite_history = [];
-          db.invite_history.push({
-             invitedUsername: member.user.username,
-             invitedId: member.user.id,
-             inviterUsername: usedInvite.inviter.username,
-             inviterId: usedInvite.inviter.id,
-             timestamp: Date.now()
-          });
-          fs.writeFileSync(dbPath, JSON.stringify(db, null, 2));
-       }
+       const db = readDatabase();
+       if (!db.invite_history) db.invite_history = [];
+       db.invite_history.push({
+          invitedUsername: member.user.username,
+          invitedId: member.user.id,
+          inviterUsername: usedInvite.inviter.username,
+          inviterId: usedInvite.inviter.id,
+          timestamp: Date.now()
+       });
+       writeDatabase(db);
     }
 
     let welcomeChannel = member.guild.channels.cache.find(c => c.name.includes('bienvenue') && c.type === ChannelType.GuildText);
@@ -723,6 +696,7 @@ async function announceDowntime() {
             // Force a final DB backup before dying to ensure no data loss
             let dbChannel = guild.channels.cache.find(c => c.name === '💾-database-logs');
             if (dbChannel) {
+                try { require('fs').writeFileSync('./database.json', JSON.stringify(readDatabase(), null, 2)); } catch (e) {}
                 let filesToBackup = [];
                 if (require('fs').existsSync('./chat_logs.json')) filesToBackup.push('./chat_logs.json');
                 if (require('fs').existsSync('./database.json')) filesToBackup.push('./database.json');
@@ -741,14 +715,12 @@ async function announceDowntime() {
 process.on('SIGTERM', announceDowntime); // Render restart
 process.on('SIGINT', announceDowntime);  // Local Ctrl+C
 
-client.login(TOKEN);
+initDatabase().then(() => client.login(TOKEN));
 
 async function resumeGiveaways() {
   if (!client.giveaways) client.giveaways = {};
-  const dbPath = require('path').join(__dirname, 'database.json');
-  let db = {};
-  if (require('fs').existsSync(dbPath)) db = JSON.parse(require('fs').readFileSync(dbPath, 'utf8'));
-  
+  const db = readDatabase();
+
   if (!db.active_giveaways) return;
   
   const now = Date.now();
@@ -794,16 +766,13 @@ async function endGiveaway(msgId, data) {
     }
     
     delete client.giveaways[msgId];
-    
-    const dbPath = require('path').join(__dirname, 'database.json');
-    if (require('fs').existsSync(dbPath)) {
-      const db = JSON.parse(require('fs').readFileSync(dbPath, 'utf8'));
-      if (db.active_giveaways && db.active_giveaways[msgId]) {
-        if(!db.giveaways_history) db.giveaways_history = {};
-        db.giveaways_history[msgId] = db.active_giveaways[msgId];
-        delete db.active_giveaways[msgId];
-        require('fs').writeFileSync(dbPath, JSON.stringify(db, null, 2));
-      }
+
+    const db = readDatabase();
+    if (db.active_giveaways && db.active_giveaways[msgId]) {
+      if (!db.giveaways_history) db.giveaways_history = {};
+      db.giveaways_history[msgId] = db.active_giveaways[msgId];
+      delete db.active_giveaways[msgId];
+      writeDatabase(db);
     }
   } catch(e) { console.error('EndGiveaway Error', e); }
 }

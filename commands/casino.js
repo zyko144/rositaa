@@ -1,14 +1,12 @@
 ﻿const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
-const fs = require('fs');
-const path = require('path');
-
-const dbPath = path.join(__dirname, '..', 'database.json');
+const { readDatabase, writeDatabase } = require('../utils/db');
 
 function getDb() {
-    if (fs.existsSync(dbPath)) try { return JSON.parse(fs.readFileSync(dbPath, 'utf8')); } catch(e) {}
-    return { economy: {} };
+    const db = readDatabase();
+    if (!db.economy) db.economy = {};
+    return db;
 }
-function saveDb(db) { fs.writeFileSync(dbPath, JSON.stringify(db, null, 2)); }
+function saveDb(db) { writeDatabase(db); }
 function getRoses(userId) { const db = getDb(); return db.economy?.[userId]?.roses || 0; }
 function addRoses(userId, amount) {
     const db = getDb();

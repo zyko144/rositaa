@@ -1,6 +1,6 @@
 
 const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder } = require('discord.js');
-const fs = require('fs');
+const { readDatabase, writeDatabase } = require('../utils/db');
 
 module.exports = [
   new SlashCommandBuilder().setName('clear').setDescription('Nettoie les messages d\'un salon')
@@ -109,16 +109,15 @@ module.exports.execute = async (interaction) => {
   }
 
   // Warnings system
-  const dbPath = './database.json';
-  let db = { warnings: {} };
-  if (fs.existsSync(dbPath)) db = JSON.parse(fs.readFileSync(dbPath, 'utf8'));
+  const db = readDatabase();
+  if (!db.warnings) db.warnings = {};
 
   if (commandName === 'warn') {
     const target = options.getUser('utilisateur');
     const reason = options.getString('raison');
     if (!db.warnings[target.id]) db.warnings[target.id] = [];
     db.warnings[target.id].push({ reason, by: member.user.tag, date: new Date().toISOString() });
-    fs.writeFileSync(dbPath, JSON.stringify(db, null, 2));
+    writeDatabase(db);
     return interaction.reply({ content: `⚠️ ${target.tag} a été averti. Raison: ${reason}` });
   }
 
@@ -134,7 +133,7 @@ module.exports.execute = async (interaction) => {
   if (commandName === 'clearwarns') {
     const target = options.getUser('utilisateur');
     delete db.warnings[target.id];
-    fs.writeFileSync(dbPath, JSON.stringify(db, null, 2));
+    writeDatabase(db);
     return interaction.reply({ content: `✅ Les avertissements de ${target.tag} ont été effacés.` });
   }
 };
