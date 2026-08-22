@@ -8,7 +8,7 @@ const { renderShopGif, renderShopPng } = require('../utils/cards/shopGif');
 const { renderRosesCard } = require('../utils/cards/rosesCard');
 const { renderWheelGif } = require('../utils/cards/wheelGif');
 
-const WHEEL_COOLDOWN_MS = 60 * 60 * 1000; // 1 tour par heure
+const WHEEL_COOLDOWN_MS = 24 * 60 * 60 * 1000; // 1 tour par 24h
 
 function getDb() {
     const db = readDatabase();
@@ -362,10 +362,10 @@ module.exports.execute = async (interaction) => {
             .setDescription(
                 winValue > 0
                     ? `🎉 La roue s'arrête sur **${winValue} 🌹 roses** !\n💳 Nouveau solde : \`${db.economy[interaction.user.id].roses} roses\``
-                    : `💀 Pas de chance cette fois, la roue s'arrête sur **0**.\n🔁 Retente ta chance dans 1 heure !`
+                    : `💀 Pas de chance cette fois, la roue s'arrête sur **0**.\n🔁 Retente ta chance dans 24 heures !`
             )
             .setImage('attachment://roue.gif')
-            .setFooter({ text: 'Prochain tour possible dans 1 heure' });
+            .setFooter({ text: 'Prochain tour possible dans 24 heures' });
 
         return interaction.editReply({ embeds: [embed], files: [attachment] });
     }

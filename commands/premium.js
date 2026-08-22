@@ -303,7 +303,7 @@ module.exports.execute = async (interaction) => {
       description:
         `Tape \`/roue\` pour la faire tourner et gagner des roses **gratuitement**, aucune mise requise !\n\n` +
         `**🎯 Chances de gain :**\n${oddsText}\n\n` +
-        `**⏳ Cooldown :** 1 tour par heure.\n\n` +
+        `**⏳ Cooldown :** 1 tour toutes les 24 heures.\n\n` +
         `Reviens régulièrement tenter ta chance ! 🌹`,
     });
     await roueChannel.send({ embeds: [embed], files });
