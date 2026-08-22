@@ -364,6 +364,13 @@ client.on('interactionCreate', async interaction => {
         return;
     }
 
+    // Menu deroulant de /help (changement de categorie)
+    if (interaction.isStringSelectMenu() && interaction.customId === 'help_category') {
+        const helpMod = require('./commands/help');
+        if (helpMod.handleSelectMenu) await helpMod.handleSelectMenu(interaction);
+        return;
+    }
+
     // Modal du role personnalise achete en boutique
     if (interaction.isModalSubmit() && interaction.customId === 'custom_role_modal') {
         const economyMod = require('./commands/economy');
