@@ -57,7 +57,14 @@ async function main() {
   if (newEntries.length > 0) {
     const date = frenchDate();
     const batch = new Date().toISOString();
-    for (const text of newEntries) data.changelog.push({ text, date, batch });
+    for (const raw of newEntries) {
+      // Un argument commencant par "#" est un titre de version/section
+      // (ex: "# FIX ERROR 1.1.0") : rendu en grand avec une coche verte,
+      // comme un titre markdown, plutot qu'une puce de changelog classique.
+      const heading = raw.trim().startsWith('#');
+      const text = heading ? raw.trim().replace(/^#+\s*/, '') : raw;
+      data.changelog.push(heading ? { text, date, batch, heading: true } : { text, date, batch });
+    }
     console.log(`ℹ️  ${newEntries.length} nouvelle(s) entrée(s) ajoutée(s).`);
   }
 

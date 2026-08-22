@@ -10,11 +10,20 @@ const DATE_HEADER_GAP = 44;
 const LINE_H = 28;
 const ENTRY_GAP = 14;
 const ENTRY_FONT = '400 19px "Poppins"';
+const ENTRY_ICON_SPACE = 24;
 const BOTTOM_PADDING = 44;
 const MAX_ENTRIES = 60;
 
 const RED_NEW = '#ff3b3b';
 const RED_NEW_DOT = '#ff2626';
+
+// Titre de version/section (ex: "# FIX ERROR 1.1.0") : bien plus grand,
+// coche verte devant, couleur fixe (pas liee au surlignage rouge "nouveau").
+const HEADING_LINE_H = 38;
+const HEADING_GAP = 22;
+const HEADING_FONT = '700 30px "Poppins Bold"';
+const HEADING_ICON_SPACE = 40;
+const HEADING_ICON_SIZE = 30;
 
 function wrapText(ctx, text, maxWidth) {
   const words = text.split(' ');
@@ -51,7 +60,10 @@ function groupByDate(entries) {
  * Genere l'image PNG listant l'historique des mises a jour du bot, groupees
  * par date (la plus recente en premier). Les entrees appartenant au dernier
  * lot ajoute (meme `batch`) sont affichees en rouge, tout le reste en blanc.
- * @param {{text: string, date: string, batch: string}[]} entries
+ * Une entree avec `heading: true` est un titre de version/section : rendue
+ * bien plus grande, avec une coche verte devant (couleur fixe, independante
+ * du surlignage rouge des nouveautes).
+ * @param {{text: string, date: string, batch: string, heading?: boolean}[]} entries
  * @returns {Promise<Buffer>} PNG
  */
 async function renderChangelogPng(entries) {
@@ -81,16 +93,18 @@ async function renderChangelogPng(entries) {
   // Canvas jetable pour mesurer le texte avant de connaitre la hauteur finale.
   const measureCanvas = createCanvas(W, 100);
   const mctx = measureCanvas.getContext('2d');
-  mctx.font = ENTRY_FONT;
-  const textMaxWidth = W - MARGIN_X * 2 - 30;
 
   let contentHeight = 0;
   const layoutGroups = groups.map(group => {
     contentHeight += DATE_HEADER_GAP;
     const items = group.items.map(item => {
-      const lines = wrapText(mctx, item.text, textMaxWidth);
-      contentHeight += lines.length * LINE_H + ENTRY_GAP;
-      return { ...item, lines };
+      const iconSpace = item.heading ? HEADING_ICON_SPACE : ENTRY_ICON_SPACE;
+      const lineH = item.heading ? HEADING_LINE_H : LINE_H;
+      const gap = item.heading ? HEADING_GAP : ENTRY_GAP;
+      mctx.font = item.heading ? HEADING_FONT : ENTRY_FONT;
+      const lines = wrapText(mctx, item.text, W - MARGIN_X * 2 - iconSpace);
+      contentHeight += lines.length * lineH + gap;
+      return { ...item, lines, iconSpace, lineH, gap };
     });
     return { date: group.date, items };
   });
@@ -126,6 +140,17 @@ async function renderChangelogPng(entries) {
     y += DATE_HEADER_GAP;
 
     for (const item of group.items) {
+      if (item.heading) {
+        ctx.drawImage(checkIcon, MARGIN_X, y - HEADING_ICON_SIZE + 6, HEADING_ICON_SIZE, HEADING_ICON_SIZE);
+        ctx.font = HEADING_FONT;
+        ctx.fillStyle = '#ffffff';
+        item.lines.forEach((line, i) => {
+          ctx.fillText(line, MARGIN_X + item.iconSpace, y + i * item.lineH);
+        });
+        y += item.lines.length * item.lineH + item.gap;
+        continue;
+      }
+
       const isNew = item.batch === latestBatch;
       const dotColor = isNew ? RED_NEW_DOT : 'rgba(255,255,255,0.45)';
       const textColor = isNew ? RED_NEW : 'rgba(255,255,255,0.92)';
@@ -138,9 +163,9 @@ async function renderChangelogPng(entries) {
       ctx.font = ENTRY_FONT;
       ctx.fillStyle = textColor;
       item.lines.forEach((line, i) => {
-        ctx.fillText(line, MARGIN_X + 24, y + i * LINE_H);
+        ctx.fillText(line, MARGIN_X + item.iconSpace, y + i * item.lineH);
       });
-      y += item.lines.length * LINE_H + ENTRY_GAP;
+      y += item.lines.length * item.lineH + item.gap;
     }
   }
 
