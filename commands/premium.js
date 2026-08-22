@@ -1,5 +1,6 @@
 const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, PermissionFlagsBits, AttachmentBuilder, ModalBuilder, TextInputBuilder, TextInputStyle } = require('discord.js');
 const fs = require('fs');
+const { brandedEmbed, PINK_ALERT } = require('../utils/theme');
 
 let rawKeys = process.env.GEMINI_API_KEYS || '';
 let apiKeys = rawKeys.split(',').map(k => k.trim()).filter(k => k.length > 0);
@@ -41,11 +42,11 @@ function checkVIP(interaction) {
 module.exports = [
 
   new SlashCommandBuilder().setName('lockdown')
-    .setDescription('??? Anti-Raid Ultime: Verrouille tous les salons du serveur !')
+    .setDescription('🛡️ Anti-Raid Ultime : verrouille tous les salons du serveur !')
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
-    
+
   new SlashCommandBuilder().setName('unlockall')
-    .setDescription('??? Anti-Raid Ultime: D�verrouille les salons du serveur !')
+    .setDescription('🛡️ Anti-Raid Ultime : déverrouille tous les salons du serveur !')
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
   new SlashCommandBuilder().setName('setup_verification')
@@ -83,6 +84,7 @@ module.exports = [
 ];
 
 module.exports.execute = async (interaction) => {
+  const { commandName, options, client } = interaction;
 
   if (commandName === 'lockdown') {
     await interaction.deferReply({ ephemeral: false });
@@ -95,9 +97,16 @@ module.exports.execute = async (interaction) => {
           count++;
         }
       }
-      return interaction.editReply('?? **LOCKDOWN ACTIV�** ??\n\nLe serveur est actuellement en mode Anti-Raid. ' + count + ' salons ont �t� verrouill�s. Les membres normaux ne peuvent plus parler.\nUtilisez `/unlock` pour annuler.');
+      interaction.client.isLockdownActive = true;
+      const embed = brandedEmbed({
+        title: '🚨 LOCKDOWN ACTIVÉ',
+        description: `Le serveur est en mode Anti-Raid. **${count}** salons ont été verrouillés.\nLes membres normaux ne peuvent plus parler.\nUtilisez \`/unlockall\` pour annuler.`,
+        banner: 'alert',
+        color: PINK_ALERT,
+      });
+      return interaction.editReply({ embeds: [embed] });
     } catch (e) {
-      return interaction.editReply('? Erreur: ' + e.message);
+      return interaction.editReply({ embeds: [brandedEmbed({ title: '❌ Erreur', description: e.message, color: PINK_ALERT })] });
     }
   }
 
@@ -113,52 +122,57 @@ module.exports.execute = async (interaction) => {
         }
       }
       interaction.client.isLockdownActive = false;
-      return interaction.editReply('? **LOCKDOWN D�SACTIV�** ?\n\n' + count + ' salons ont �t� d�verrouill�s. Le serveur reprend son fonctionnement normal.');
+      const embed = brandedEmbed({
+        title: '✅ LOCKDOWN DÉSACTIVÉ',
+        description: `**${count}** salons ont été déverrouillés. Le serveur reprend son fonctionnement normal.`,
+        banner: 'success',
+      });
+      return interaction.editReply({ embeds: [embed] });
     } catch (e) {
-      return interaction.editReply('? Erreur: ' + e.message);
+      return interaction.editReply({ embeds: [brandedEmbed({ title: '❌ Erreur', description: e.message, color: PINK_ALERT })] });
     }
   }
 
-  const { commandName, options, client } = interaction;
-  
   if (commandName === 'setup_verification') {
-    const embed = new EmbedBuilder()
-      .setColor(0xCF6B45)
-      .setTitle('🛡️ Vérification Anti-Raid')
-      .setDescription("Pour accéder au reste du serveur, veuillez prouver que vous êtes humain en cliquant sur le bouton ci-dessous.");
-      
+    const embed = brandedEmbed({
+      title: '🛡️ Vérification Anti-Raid',
+      description: 'Pour accéder au reste du serveur, prouve que tu es humain en cliquant sur le bouton ci-dessous.',
+      banner: 'success',
+    });
+
     const row = new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId('verify_member').setLabel('✅ Se vérifier').setStyle(ButtonStyle.Success)
+      new ButtonBuilder().setCustomId('verify_member').setLabel('Se vérifier').setEmoji('✅').setStyle(ButtonStyle.Success)
     );
-    
+
     await interaction.channel.send({ embeds: [embed], components: [row] });
     return interaction.reply({ content: '✅ Panneau de vérification installé.', ephemeral: true });
   }
 
   if (commandName === 'setup_vip') {
-    const embed = new EmbedBuilder()
-      .setColor(0xCF6B45)
-      .setTitle('💎  AVANTAGES EXCLUSIFS VIP')
-      .setDescription("Débloquez la pleine puissance de l'Intelligence Artificielle en devenant membre Premium de Claude+. Voici vos super-pouvoirs :\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-      .addFields(
-        { name: "🎥 Résumé YouTube (`/youtube`)", value: "Faites résumer n'importe quelle longue vidéo YouTube en quelques secondes.", inline: false },
-        { name: "💻 Coach Développeur (`/code_review`)", value: "Faites analyser, débugger et corriger votre code par un CTO IA virtuel.", inline: false },
-        { name: "✍️ Copywriter Pro (`/copywriter`)", value: "Réécrivez vos brouillons en textes hypnotiques, sans fautes et professionnels.", inline: false },
-        { name: "🎨 Créateur d'Images 8K (`/imagine_pro`)", value: "Générez des images en qualité maximale sans file d'attente.", inline: false },
-        { name: "📈 Consultant Business (`/business_plan`)", value: "Demandez à l'IA de structurer et d'écrire un business plan complet pour vos projets.", inline: false },
-        { name: "🚀 Sans Limites", value: "Vos requêtes sont prioritaires sur le serveur !", inline: false }
-      )
-      .setFooter({ text: "Soutenez le serveur et obtenez le rôle Premium !" });
-      
+    const embed = brandedEmbed({
+      title: '💎 AVANTAGES EXCLUSIFS VIP',
+      description: "Débloque des super-pouvoirs en devenant membre Premium de Rositaa 🌸\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+      banner: 'cosmetic',
+      fields: [
+        { name: '🎥 Résumé YouTube (`/youtube`)', value: "Fais résumer n'importe quelle longue vidéo YouTube en quelques secondes.", inline: false },
+        { name: '💻 Coach Développeur (`/code_review`)', value: 'Fais analyser, débugger et corriger ton code par un CTO IA virtuel.', inline: false },
+        { name: '✍️ Copywriter Pro (`/copywriter`)', value: 'Réécris tes brouillons en textes hypnotiques, sans fautes et professionnels.', inline: false },
+        { name: "🎨 Créateur d'Images 8K (`/imagine_pro`)", value: "Génère des images en qualité maximale sans file d'attente.", inline: false },
+        { name: '📈 Consultant Business (`/business_plan`)', value: "Demande à l'IA de structurer et d'écrire un business plan complet.", inline: false },
+        { name: '🚀 Sans Limites', value: 'Tes requêtes sont prioritaires sur le serveur !', inline: false },
+      ],
+    }).setFooter({ text: 'Soutiens le serveur et obtiens le rôle Premium ! 🌸' });
+
     await interaction.channel.send({ embeds: [embed] });
     return interaction.reply({ content: '✅ Panneau VIP installé.', ephemeral: true });
   }
 
   if (commandName === 'setup_roles') {
-    const embed = new EmbedBuilder()
-      .setColor(0xCF6B45)
-      .setTitle('🎭  Choisis ton Profil')
-      .setDescription('Clique sur les emojis pour recevoir le rôle correspondant :\n\n💻 — **Développeur**\n🤖 — **Passionné IA**\n📖 — **Apprenant**');
+    const embed = brandedEmbed({
+      title: '🎭 Choisis ton Profil',
+      description: 'Clique sur les emojis pour recevoir le rôle correspondant :\n\n💻 — **Développeur**\n🤖 — **Passionné IA**\n📖 — **Apprenant**',
+      banner: 'fun',
+    });
 
     const msg = await interaction.channel.send({ embeds: [embed] });
     await msg.react('💻'); await msg.react('🤖'); await msg.react('📖');
@@ -167,18 +181,18 @@ module.exports.execute = async (interaction) => {
 
   if (commandName === 'setup_tickets') {
     const attachment = new AttachmentBuilder('./assets/ticket_banner.png');
-    
-    const embed = new EmbedBuilder()
-      .setColor(0xFF69B4)
-      .setTitle('💬  -  CENTRE DE SUPPORT & TICKETS')
-      .setDescription("Bienvenue dans l'espace de support officiel.\nCliquez sur l'un des boutons ci-dessous pour ouvrir un salon de discussion privé.")
-      .setImage('attachment://ticket_banner.png');
-      
+
+    const embed = brandedEmbed({
+      title: '🎫 CENTRE DE SUPPORT & TICKETS',
+      description: "Bienvenue dans l'espace de support officiel de Rositaa 🌸\nClique sur l'un des boutons ci-dessous pour ouvrir un salon de discussion privé avec l'équipe.",
+      banner: 'attachment://ticket_banner.png',
+    });
+
     const row = new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId('ticket_questions').setLabel('❓ Questions').setStyle(ButtonStyle.Primary),
-      new ButtonBuilder().setCustomId('ticket_aide').setLabel('🆘 Aide').setStyle(ButtonStyle.Secondary)
+      new ButtonBuilder().setCustomId('ticket_questions').setLabel('Questions').setEmoji('❓').setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId('ticket_aide').setLabel('Aide').setEmoji('🆘').setStyle(ButtonStyle.Secondary)
     );
-    
+
     await interaction.channel.send({ embeds: [embed], components: [row], files: [attachment] });
     return interaction.reply({ content: '✅ Panneau de tickets installé.', ephemeral: true });
   }

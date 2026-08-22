@@ -5,6 +5,7 @@ const discordTranscripts = require('discord-html-transcripts');
 require('dotenv').config();
 const path = require('path');
 const { initDatabase, readDatabase, writeDatabase } = require('./utils/db');
+const { brandedEmbed, PINK_ALERT } = require('./utils/theme');
 
 const activeTicketCreations = new Set(); // Prevent double-click ticket race conditions
 
@@ -138,7 +139,7 @@ client.on('messageCreate', async (message) => {
         const now = Date.now();
         const lastMsgTime = client.ecoCooldowns.get(message.author.id) || 0;
         
-        // Cooldown de 1 minute pour emp�cher le spam
+        // Cooldown de 1 minute pour empêcher le spam
         if (now - lastMsgTime > 60000) {
             client.ecoCooldowns.set(message.author.id, now);
             const db = readDatabase();
@@ -461,64 +462,78 @@ client.on('interactionCreate', async interaction => {
       }
 
     if (interaction.customId.startsWith('ticket_')) {
-      const type = interaction.customId.split('_')[1]; // support, booster, premium
-      
-      const channelName = 'ticket-' + interaction.user.username.toLowerCase();
-      
+      const type = interaction.customId.split('_')[1]; // support, booster, premium, questions, aide...
+
+      const safeName = interaction.user.username.toLowerCase().replace(/[^a-z0-9-]/g, '');
+      const channelName = 'ticket-' + (safeName || interaction.user.id);
+
       if (activeTicketCreations.has(interaction.user.id)) {
         return interaction.reply({ content: '⏳ Création en cours... merci de ne pas spammer le bouton.', ephemeral: true });
       }
       activeTicketCreations.add(interaction.user.id);
-      
+
       try {
         const guild = interaction.guild;
         // Chercher la catégorie "🎫 TICKETS EN COURS"
         let category = guild.channels.cache.find(c => c.name === '🎫 TICKETS EN COURS' && c.type === ChannelType.GuildCategory);
-        if(!category) category = await guild.channels.create({ name: '🎫 TICKETS EN COURS', type: ChannelType.GuildCategory });
-        
-        const existingTicket = guild.channels.cache.find(c => c.name === channelName);
+        if (!category) category = await guild.channels.create({ name: '🎫 TICKETS EN COURS', type: ChannelType.GuildCategory });
+
+        // On identifie le ticket par son "topic" (l'ID du membre) plutot que
+        // par le nom du salon : Discord peut modifier le nom (caracteres
+        // interdits), le topic lui reste fiable pour eviter les doublons.
+        const existingTicket = guild.channels.cache.find(c => c.parentId === category.id && c.topic === interaction.user.id);
         if (existingTicket) {
           activeTicketCreations.delete(interaction.user.id);
           return interaction.reply({ content: `❌ Tu as déjà un ticket d'ouvert ici : <#${existingTicket.id}>. Tu ne peux pas en ouvrir un autre.`, ephemeral: true });
         }
-        
-        const ticketChannel = await guild.channels.create({
-        name: channelName,
-        type: ChannelType.GuildText,
-        parent: category.id,
-        permissionOverwrites: [
+
+        // Le staff (tout role avec la permission "Gerer les salons") a
+        // automatiquement acces au ticket, en plus de la personne qui l'ouvre.
+        const staffRoles = guild.roles.cache.filter(r => r.permissions.has(PermissionFlagsBits.ManageChannels));
+        const permissionOverwrites = [
           { id: guild.id, deny: [PermissionFlagsBits.ViewChannel] },
-          { id: interaction.user.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages] }
-        ]
-      });
-      
-      const row = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('close_ticket').setLabel('🔒 Fermer le ticket').setStyle(ButtonStyle.Danger)
-      );
-      
-      const attachment = new AttachmentBuilder('./assets/ticket_banner.png');
-      const embed = new EmbedBuilder()
-        .setTitle('🎫 Nouveau Ticket : ' + type.toUpperCase())
-        .setDescription([
-          "**Bienvenue dans votre espace privé !**",
-          "Un membre de notre équipe s'occupera de vous dans les plus brefs délais.",
-          "",
-          "━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
-          "",
-          "**Comment nous aider à vous répondre plus vite ?**",
-          "- Décrivez votre problème avec le plus de détails possible.",
-          "- Fournissez des captures d'écran si nécessaire.",
-          "- Patientez calmement (inutile de mentionner le staff)."
-        ].join('\n'))
-        .setColor(0xFF69B4)
-        .setImage('attachment://assets/ticket_banner.png')
-        .setTimestamp();
-        
-      await ticketChannel.send({ content: "Bienvenue <@" + interaction.user.id + "> !", embeds: [embed], components: [row], files: [attachment] });
+          { id: interaction.user.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] },
+          { id: guild.members.me.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ManageChannels] },
+          ...staffRoles.map(role => ({ id: role.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] })),
+        ];
+
+        const ticketChannel = await guild.channels.create({
+          name: channelName,
+          type: ChannelType.GuildText,
+          parent: category.id,
+          topic: interaction.user.id,
+          permissionOverwrites,
+        });
+
+        const row = new ActionRowBuilder().addComponents(
+          new ButtonBuilder().setCustomId('close_ticket').setLabel('Fermer le ticket').setEmoji('🔒').setStyle(ButtonStyle.Danger)
+        );
+
+        const attachment = new AttachmentBuilder('./assets/ticket_banner.png');
+        const embed = new EmbedBuilder()
+          .setAuthor({ name: '🌸 SUPPORT ROSITAA', iconURL: 'https://i.pinimg.com/originals/79/28/70/792870b991b5c30704944d1bead515e3.gif' })
+          .setTitle('🎫 Nouveau Ticket — ' + type.toUpperCase())
+          .setDescription([
+            `**Bienvenue ${interaction.user} !**`,
+            "Un membre de l'équipe va s'occuper de toi très vite.",
+            "",
+            "━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+            "",
+            "**Pour qu'on t'aide plus vite :**",
+            "🌸 Décris ton problème avec un maximum de détails",
+            "🌸 Ajoute des captures d'écran si besoin",
+            "🌸 Patiente calmement (inutile de ping le staff)"
+          ].join('\n'))
+          .setColor(0xFF69B4)
+          .setImage('attachment://ticket_banner.png')
+          .setFooter({ text: 'Rositaa 🌸' })
+          .setTimestamp();
+
+        await ticketChannel.send({ content: `${interaction.user} • Bienvenue !`, embeds: [embed], components: [row], files: [attachment] });
         await interaction.reply({ content: `✅ Ton ticket a été ouvert : ${ticketChannel}`, ephemeral: true }).catch(console.error);
       } catch (error) {
         console.error(error);
-        await interaction.reply({ content: "❌ Une erreur est survenue lors de la création du ticket.", ephemeral: true });
+        await interaction.reply({ content: "❌ Une erreur est survenue lors de la création du ticket.", ephemeral: true }).catch(() => {});
       } finally {
         setTimeout(() => activeTicketCreations.delete(interaction.user.id), 3000); // Remove lock after 3 seconds
       }
@@ -528,21 +543,26 @@ client.on('interactionCreate', async interaction => {
       if (!interaction.member.permissions.has(PermissionFlagsBits.ManageChannels)) {
         return interaction.reply({ content: '❌ Seul le staff peut fermer un ticket.', ephemeral: true });
       }
-      await interaction.reply({ content: '🔒 Le ticket est en cours de fermeture... Sauvegarde de la conversation.' });
-      
+      const closingEmbed = new EmbedBuilder()
+        .setColor(0xFF1E56)
+        .setTitle('🔒 Fermeture du ticket')
+        .setDescription('Ce salon sera supprimé dans quelques secondes.\nSauvegarde de la conversation en cours...')
+        .setFooter({ text: 'Rositaa 🌸' });
+      await interaction.reply({ embeds: [closingEmbed] });
+
       try {
         const attachment = await discordTranscripts.createTranscript(interaction.channel, {
-             limit: -1, 
+             limit: -1,
              returnType: 'attachment',
              filename: `transcript-${interaction.channel.name}.html`,
-             saveImages: true, 
+             saveImages: true,
              poweredBy: false
         });
-        
+
         const members = interaction.channel.members.filter(m => !m.user.bot);
         for (const [id, member] of members) {
             await member.send({
-                content: `📁 Voici une copie de ton ticket **${interaction.channel.name}** fermé sur Claude+. Tu peux ouvrir le fichier HTML sur ton navigateur (PC ou Téléphone) pour lire la conversation complète avec le design de Discord.`,
+                content: `📁 Voici une copie de ton ticket **${interaction.channel.name}** fermé sur Rositaa 🌸. Tu peux ouvrir le fichier HTML sur ton navigateur (PC ou Téléphone) pour lire la conversation complète avec le design de Discord.`,
                 files: [attachment]
             }).catch(() => {});
         }
@@ -616,9 +636,15 @@ client.on('guildMemberAdd', async member => {
                         await channel.permissionOverwrites.edit(guild.roles.everyone.id, { SendMessages: false }).catch(()=>{});
                     }
                 }
-                const alertChannel = guild.channels.cache.find(c => c.name.includes('general') || c.name.includes('g�n�ral')) || guild.systemChannel;
+                const alertChannel = guild.channels.cache.find(c => c.name.includes('general') || c.name.includes('général')) || guild.systemChannel;
                 if (alertChannel) {
-                    alertChannel.send('?? **ALERTE ANTI-RAID AUTOMATIQUE** ??\n\nUne attaque massive a �t� d�tect�e (trop d\'arriv�es en quelques secondes). Le bot a **VERROUILL�** automatiquement tous les salons.\nAdministrateurs : utilisez `/unlock` quand le calme sera revenu.');
+                    const alertEmbed = brandedEmbed({
+                        title: '🚨 ALERTE ANTI-RAID AUTOMATIQUE',
+                        description: "Une attaque massive a été détectée (trop d'arrivées en quelques secondes).\nLe bot a **VERROUILLÉ** automatiquement tous les salons.\n\nAdministrateurs : utilisez `/unlockall` quand le calme sera revenu.",
+                        banner: 'alert',
+                        color: PINK_ALERT,
+                    });
+                    alertChannel.send({ embeds: [alertEmbed] });
                 }
             } catch(e) { console.error('Erreur auto-lockdown', e); }
         }

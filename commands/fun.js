@@ -1,4 +1,5 @@
-﻿const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
+const { SlashCommandBuilder } = require('discord.js');
+const { brandedEmbed } = require('../utils/theme');
 
 module.exports = [
   new SlashCommandBuilder().setName('8ball').setDescription('Pose une question magique')
@@ -23,34 +24,46 @@ module.exports = [
 
 module.exports.execute = async (interaction) => {
   const { commandName, options } = interaction;
-  
+
   if (commandName === '8ball') {
-    const responses = ['Oui absolument', 'Non jamais', 'Peut-être', 'C\'est certain', 'Je ne pense pas', 'Demande plus tard'];
+    const responses = ['Oui absolument 🌸', 'Non, jamais', 'Peut-être...', 'C\'est certain !', 'Je ne pense pas', 'Demande plus tard'];
     const r = responses[Math.floor(Math.random() * responses.length)];
-    return interaction.reply({ content: `🎱 **Question:** ${options.getString('question')}\n**Réponse:** ${r}` });
+    const embed = brandedEmbed({
+      title: '🎱 Boule Magique',
+      banner: 'fun',
+      fields: [
+        { name: 'Question', value: options.getString('question') },
+        { name: 'Réponse', value: `**${r}**` },
+      ],
+    });
+    return interaction.reply({ embeds: [embed] });
   }
 
   if (commandName === 'coinflip_fun') {
     const res = Math.random() < 0.5 ? 'Pile' : 'Face';
-    return interaction.reply({ content: `🪙 La pièce est tombée sur : **${res}**` });
+    const embed = brandedEmbed({ title: '🪙 Pile ou Face', description: `La pièce est tombée sur : **${res}** !`, banner: 'fun' });
+    return interaction.reply({ embeds: [embed] });
   }
 
   if (commandName === 'roll') {
     const res = Math.floor(Math.random() * 100) + 1;
-    return interaction.reply({ content: `🎲 Tu as lancé un **${res}** (sur 100) !` });
+    const embed = brandedEmbed({ title: '🎲 Lancer de dé', description: `Tu as obtenu **${res}** (sur 100) !`, banner: 'fun' });
+    return interaction.reply({ embeds: [embed] });
   }
 
   if (commandName === 'joke') {
     const jokes = [
-      "Pourquoi les plongeurs plongent-ils toujours en arrière ? Parce que sinon ils tombent dans le bateau.",
-      "Que fait une fraise sur un cheval ? Tagada tagada !",
-      "C'est l'histoire d'un pingouin qui respire par les fesses. Un jour il s'assoit et il meurt."
+      'Pourquoi les plongeurs plongent-ils toujours en arrière ? Parce que sinon ils tombent dans le bateau.',
+      'Que fait une fraise sur un cheval ? Tagada tagada !',
+      "C'est l'histoire d'un pingouin qui respire par les fesses. Un jour il s'assoit et il meurt.",
     ];
-    return interaction.reply({ content: `😂 ${jokes[Math.floor(Math.random() * jokes.length)]}` });
+    const embed = brandedEmbed({ title: '😂 Blague du jour', description: jokes[Math.floor(Math.random() * jokes.length)], banner: 'fun' });
+    return interaction.reply({ embeds: [embed] });
   }
 
   if (commandName === 'meme') {
-    return interaction.reply({ content: '🖼️ *Insérer une API de memes ici : https://cataas.com/cat*' });
+    const embed = brandedEmbed({ title: '🖼️ Meme du jour', description: '*(API de memes à brancher ici)*', banner: 'fun' });
+    return interaction.reply({ embeds: [embed] });
   }
 
   if (commandName === 'rps') {
@@ -59,14 +72,24 @@ module.exports.execute = async (interaction) => {
     const botC = botChoices[Math.floor(Math.random() * botChoices.length)];
     let result = 'Égalité !';
     if ((user === 'pierre' && botC === 'ciseaux') || (user === 'feuille' && botC === 'pierre') || (user === 'ciseaux' && botC === 'feuille')) result = 'Tu as gagné ! 🏆';
-    else if (user !== botC) result = 'J\'ai gagné ! 🤖';
-    return interaction.reply({ content: `Tu as joué **${user}**, j'ai joué **${botC}**.\n${result}` });
+    else if (user !== botC) result = "J'ai gagné ! 🤖";
+    const embed = brandedEmbed({
+      title: '✊✋✌️ Pierre Feuille Ciseaux',
+      description: `Tu as joué **${user}**, j'ai joué **${botC}**.\n\n**${result}**`,
+      banner: 'fun',
+    });
+    return interaction.reply({ embeds: [embed] });
   }
 
   if (commandName === 'lovecalc') {
     const u1 = options.getUser('user1');
     const u2 = options.getUser('user2');
     const score = Math.floor(Math.random() * 101);
-    return interaction.reply({ content: `💖 Le taux d'amour entre ${u1} et ${u2} est de **${score}%** !` });
+    const embed = brandedEmbed({
+      title: '💖 Love Calculator',
+      description: `Le taux d'amour entre ${u1} et ${u2} est de...\n\n## 💗 ${score}% 💗`,
+      banner: 'fun',
+    });
+    return interaction.reply({ embeds: [embed] });
   }
 };

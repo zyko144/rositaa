@@ -1,5 +1,6 @@
 
-const { SlashCommandBuilder, EmbedBuilder, ChannelType } = require('discord.js');
+const { SlashCommandBuilder, ChannelType } = require('discord.js');
+const { brandedEmbed } = require('../utils/theme');
 
 module.exports = [
   new SlashCommandBuilder().setName('ping').setDescription('Affiche la latence du bot'),
@@ -25,48 +26,61 @@ module.exports = [
 
 module.exports.execute = async (interaction) => {
   const { commandName, options, guild, client } = interaction;
-  
+
   if (commandName === 'ping') {
-    return interaction.reply({ content: `🏓 Pong! Latence: ${client.ws.ping}ms` });
+    const embed = brandedEmbed({ title: '🏓 Pong !', description: `Latence de l'API : **${client.ws.ping}ms**`, banner: 'fun' });
+    return interaction.reply({ embeds: [embed] });
   }
 
   if (commandName === 'serverinfo') {
-    const embed = new EmbedBuilder().setTitle(guild.name).setThumbnail(guild.iconURL())
-      .addFields(
-        { name: 'Membres', value: `${guild.memberCount}`, inline: true },
-        { name: 'Créé le', value: `<t:${Math.floor(guild.createdTimestamp / 1000)}:R>`, inline: true }
-      ).setColor(0xCF6B45);
+    const embed = brandedEmbed({
+      title: `🌸 ${guild.name}`,
+      thumbnail: guild.iconURL(),
+      banner: 'fun',
+      fields: [
+        { name: '👥 Membres', value: `${guild.memberCount}`, inline: true },
+        { name: '📅 Créé le', value: `<t:${Math.floor(guild.createdTimestamp / 1000)}:R>`, inline: true },
+      ],
+    });
     return interaction.reply({ embeds: [embed] });
   }
 
   if (commandName === 'userinfo') {
     const target = options.getMember('utilisateur') || interaction.member;
-    const embed = new EmbedBuilder().setTitle(target.user.tag).setThumbnail(target.user.displayAvatarURL())
-      .addFields(
-        { name: 'Rejoint le serveur', value: `<t:${Math.floor(target.joinedTimestamp / 1000)}:R>`, inline: true },
-        { name: 'Créé le compte', value: `<t:${Math.floor(target.user.createdTimestamp / 1000)}:R>`, inline: true }
-      ).setColor(0xCF6B45);
+    const embed = brandedEmbed({
+      title: `🌸 ${target.user.tag}`,
+      thumbnail: target.user.displayAvatarURL(),
+      banner: 'profile',
+      fields: [
+        { name: '📥 Rejoint le serveur', value: `<t:${Math.floor(target.joinedTimestamp / 1000)}:R>`, inline: true },
+        { name: '🐣 Compte créé', value: `<t:${Math.floor(target.user.createdTimestamp / 1000)}:R>`, inline: true },
+      ],
+    });
     return interaction.reply({ embeds: [embed] });
   }
 
   if (commandName === 'avatar') {
     const target = options.getUser('utilisateur') || interaction.user;
-    const embed = new EmbedBuilder().setTitle(`Avatar de ${target.tag}`).setImage(target.displayAvatarURL({ size: 512 })).setColor(0xCF6B45);
+    const embed = brandedEmbed({ title: `🖼️ Avatar de ${target.tag}`, banner: target.displayAvatarURL({ size: 1024 }) });
     return interaction.reply({ embeds: [embed] });
   }
 
   if (commandName === 'botinfo') {
-    const embed = new EmbedBuilder().setTitle('🤖 Stats du Bot').setColor(0xCF6B45)
-      .addFields(
-        { name: 'Uptime', value: `${Math.floor(process.uptime() / 60)} minutes`, inline: true },
-        { name: 'Mémoire', value: `${Math.round(process.memoryUsage().rss / 1024 / 1024)} MB`, inline: true }
-      );
+    const embed = brandedEmbed({
+      title: '🤖 Statistiques de Rositaa',
+      banner: 'fun',
+      fields: [
+        { name: '⏱️ Uptime', value: `${Math.floor(process.uptime() / 60)} minutes`, inline: true },
+        { name: '💾 Mémoire', value: `${Math.round(process.memoryUsage().rss / 1024 / 1024)} MB`, inline: true },
+      ],
+    });
     return interaction.reply({ embeds: [embed] });
   }
 
   if (commandName === 'roles') {
-    const roles = guild.roles.cache.map(r => r.name).join(', ');
-    return interaction.reply({ content: `**Rôles du serveur:**\n${roles.substring(0, 1900)}` });
+    const roles = guild.roles.cache.map(r => r.toString()).join(', ');
+    const embed = brandedEmbed({ title: '🎭 Rôles du serveur', description: roles.substring(0, 3900), banner: 'fun' });
+    return interaction.reply({ embeds: [embed] });
   }
 
   if (commandName === 'sondage') {
@@ -78,21 +92,15 @@ module.exports.execute = async (interaction) => {
     }
 
     const emojis = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣'];
-    let descriptionText = `**${question}**\n\n`;
-    
-    choices.forEach((choice, index) => {
-      descriptionText += `${emojis[index]} ${choice}\n\n`;
-    });
+    const description = choices.map((choice, index) => `${emojis[index]} ${choice}`).join('\n\n');
 
-    const embed = new EmbedBuilder()
-      .setTitle('📊 Nouveau Sondage')
-      .setDescription(descriptionText)
-      .setColor(0xCF6B45)
-      .setFooter({ text: `Sondage créé par ${interaction.user.tag}`, iconURL: interaction.user.displayAvatarURL() })
-      .setTimestamp();
+    const embed = brandedEmbed({
+      title: `📊 ${question}`,
+      description,
+      banner: 'fun',
+    }).setFooter({ text: `Sondage créé par ${interaction.user.tag}`, iconURL: interaction.user.displayAvatarURL() });
 
     const msg = await interaction.reply({ embeds: [embed], fetchReply: true });
-    
     for (let i = 0; i < choices.length; i++) {
       await msg.react(emojis[i]);
     }
@@ -101,51 +109,51 @@ module.exports.execute = async (interaction) => {
 
   if (commandName === 'say') {
     const msg = options.getString('message');
-    if (!interaction.member.permissions.has('ManageMessages')) return interaction.reply({content:'Non autorisé.', ephemeral:true});
+    if (!interaction.member.permissions.has('ManageMessages')) {
+      return interaction.reply({ embeds: [brandedEmbed({ title: '❌ Non autorisé', color: 0xFF1E56 })], ephemeral: true });
+    }
     await interaction.channel.send(msg);
-    return interaction.reply({ content: '✅ Message envoyé', ephemeral: true });
+    return interaction.reply({ embeds: [brandedEmbed({ title: '✅ Message envoyé', banner: 'success' })], ephemeral: true });
   }
 
   if (commandName === 'invites') {
     const target = options.getUser('utilisateur') || interaction.user;
-    
+
     try {
       const invites = await guild.invites.fetch();
       const userInvites = invites.filter(i => i.inviter && i.inviter.id === target.id);
-      
+
       let totalUses = 0;
       userInvites.forEach(invite => {
         totalUses += invite.uses || 0;
       });
 
-      const embed = new EmbedBuilder()
-        .setTitle(`📨 Invitations de ${target.username}`)
-        .setDescription(`${target.toString()} a invité **${totalUses}** membre(s) sur le serveur.`)
-        .setColor(0xCF6B45)
-        .setThumbnail(target.displayAvatarURL());
+      const embed = brandedEmbed({
+        title: `📨 Invitations de ${target.username}`,
+        description: `${target.toString()} a invité **${totalUses}** membre(s) sur le serveur.`,
+        thumbnail: target.displayAvatarURL(),
+        banner: 'gift',
+      });
 
       return interaction.reply({ embeds: [embed] });
     } catch (err) {
       console.error(err);
-      return interaction.reply({ content: `❌ Impossible de récupérer les données. Erreur technique : \`${err.message}\``, ephemeral: true });
+      return interaction.reply({ embeds: [brandedEmbed({ title: '❌ Erreur', description: `Impossible de récupérer les données : \`${err.message}\``, color: 0xFF1E56 })], ephemeral: true });
     }
   }
   if (commandName === 'topinvites') {
     try {
-      // Fetch all invites and all members
       const invites = await guild.invites.fetch();
       const members = await guild.members.fetch();
-      
+
       const inviteCounts = new Map();
-      
-      // Initialize all members with 0 invites
+
       members.forEach(member => {
         if (!member.user.bot) {
           inviteCounts.set(member.user.id, { uses: 0, user: member.user });
         }
       });
-      
-      // Add actual invite uses
+
       invites.forEach(invite => {
         if (invite.inviter && !invite.inviter.bot) {
           const inviterId = invite.inviter.id;
@@ -154,32 +162,33 @@ module.exports.execute = async (interaction) => {
           inviteCounts.set(inviterId, currentUses);
         }
       });
-      
-      // Sort and get top 15
+
       const sortedInvites = Array.from(inviteCounts.values())
         .sort((a, b) => b.uses - a.uses)
         .slice(0, 15);
-        
+
       if (sortedInvites.length === 0) {
-        return interaction.reply({ content: 'Aucun membre trouvé.', ephemeral: true });
+        return interaction.reply({ embeds: [brandedEmbed({ title: 'Aucun membre trouvé.', banner: 'leaderboard' })], ephemeral: true });
       }
-      
-      let description = '';
-      sortedInvites.forEach((inv, index) => {
-        const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : '🔹';
-        description += `${medal} **${inv.user.username}** : ${inv.uses} invitation(s)\n`;
+
+      const description = sortedInvites
+        .map((inv, index) => {
+          const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : '🔹';
+          return `${medal} **${inv.user.username}** — ${inv.uses} invitation(s)`;
+        })
+        .join('\n');
+
+      const embed = brandedEmbed({
+        title: '🏆 Classement des Recruteurs',
+        description,
+        thumbnail: guild.iconURL(),
+        banner: 'leaderboard',
       });
-      
-      const embed = new EmbedBuilder()
-        .setTitle('🏆 Classement des Recruteurs')
-        .setDescription(description)
-        .setColor(0xCF6B45)
-        .setThumbnail(guild.iconURL());
-        
+
       return interaction.reply({ embeds: [embed] });
     } catch (err) {
       console.error(err);
-      return interaction.reply({ content: `❌ Impossible de récupérer les données. Erreur technique : \`${err.message}\``, ephemeral: true });
+      return interaction.reply({ embeds: [brandedEmbed({ title: '❌ Erreur', description: `Impossible de récupérer les données : \`${err.message}\``, color: 0xFF1E56 })], ephemeral: true });
     }
   }
 
@@ -190,37 +199,36 @@ module.exports.execute = async (interaction) => {
         channel = guild.channels.cache.find(c => c.type === ChannelType.GuildText);
       }
 
-      let inviteUrl = "";
+      let inviteUrl = '';
       if (channel) {
         const invite = await channel.createInvite({
-          maxAge: 0, 
-          maxUses: 0, 
-          unique: true, 
+          maxAge: 0,
+          maxUses: 0,
+          unique: true,
           reason: `Créé par ${interaction.user.tag} via /invite`
         }).catch(() => null);
-        
+
         if (invite) {
           inviteUrl = invite.url;
         }
       }
 
-      const embed = new EmbedBuilder()
-        .setTitle('📨 Inviter des amis')
-        .setDescription(`Pour inviter des amis et participer au concours d'invitations :\n\n` +
-          `1. **Créez votre propre lien d'invitation** :\n` +
-          (inviteUrl ? `👉 Voici votre lien d'invitation personnel généré : **${inviteUrl}**\n` : `👉 Utilisez l'interface Discord : Clic droit sur le serveur -> **Inviter des gens**.\n`) +
-          `\n` +
-          `2. **⚠️ RÈGLE IMPORTANTE** :\n` +
-          `Pour que vos invitations soient comptabilisées par le bot, **vous devez partager votre propre lien**. Si vos amis utilisent un autre lien, votre score n'augmentera pas.\n` +
-          `\n` +
-          `3. **Double Comptes interdits** :\n` +
-          `Notre système de sécurité détecte et exclut automatiquement les double comptes (comptes récents ou suspects). Tricher entraînera une exclusion immédiate des Giveaways et un possible bannissement.`)
-        .setColor(0xCF6B45);
+      const embed = brandedEmbed({
+        title: '📨 Inviter des amis',
+        banner: 'gift',
+        description: `Pour inviter des amis et participer au concours d'invitations :\n\n` +
+          `**1. Crée ton propre lien d'invitation :**\n` +
+          (inviteUrl ? `👉 Voici ton lien personnel : **${inviteUrl}**\n` : `👉 Utilise l'interface Discord : clic droit sur le serveur → **Inviter des gens**.\n`) +
+          `\n**2. ⚠️ Règle importante :**\n` +
+          `Pour que tes invitations soient comptabilisées, **tu dois partager ton propre lien**. Si tes amis utilisent un autre lien, ton score n'augmentera pas.\n` +
+          `\n**3. 🚫 Doubles comptes interdits :**\n` +
+          `Notre système de sécurité détecte et exclut automatiquement les doubles comptes (comptes récents ou suspects). Tricher entraîne une exclusion immédiate des Giveaways et un possible bannissement.`,
+      });
 
       return interaction.reply({ embeds: [embed] });
     } catch (err) {
       console.error(err);
-      return interaction.reply({ content: `❌ Impossible de générer l'invitation. Assure-toi que j'ai la permission "Gérer le serveur" et "Créer une invitation".`, ephemeral: true });
+      return interaction.reply({ embeds: [brandedEmbed({ title: '❌ Erreur', description: 'Assure-toi que le bot a la permission "Gérer le serveur" et "Créer une invitation".', color: 0xFF1E56 })], ephemeral: true });
     }
   }
 };
