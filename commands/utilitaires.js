@@ -1,6 +1,96 @@
 
-const { SlashCommandBuilder, ChannelType } = require('discord.js');
+const { SlashCommandBuilder, ChannelType, PermissionFlagsBits, ActionRowBuilder, StringSelectMenuBuilder } = require('discord.js');
 const { brandedEmbed } = require('../utils/theme');
+
+async function buildInviteLinkEmbed(interaction) {
+  const { guild } = interaction;
+  let channel = interaction.channel;
+  if (!channel || channel.type !== ChannelType.GuildText) {
+    channel = guild.channels.cache.find(c => c.type === ChannelType.GuildText);
+  }
+
+  let inviteUrl = '';
+  if (channel) {
+    const invite = await channel.createInvite({
+      maxAge: 0,
+      maxUses: 0,
+      unique: true,
+      reason: `Créé par ${interaction.user.tag} via le panneau d'invitations`,
+    }).catch(() => null);
+    if (invite) inviteUrl = invite.url;
+  }
+
+  return brandedEmbed({
+    title: '📨 Ton lien d\'invitation',
+    banner: 'gift',
+    description: `Pour inviter des amis et participer au concours d'invitations :\n\n` +
+      `**1. Crée ton propre lien d'invitation :**\n` +
+      (inviteUrl ? `👉 Voici ton lien personnel : **${inviteUrl}**\n` : `👉 Utilise l'interface Discord : clic droit sur le serveur → **Inviter des gens**.\n`) +
+      `\n**2. ⚠️ Règle importante :**\n` +
+      `Pour que tes invitations soient comptabilisées, **tu dois partager ton propre lien**. Si tes amis utilisent un autre lien, ton score n'augmentera pas.\n` +
+      `\n**3. 🚫 Doubles comptes interdits :**\n` +
+      `Notre système de sécurité détecte et exclut automatiquement les doubles comptes (comptes récents ou suspects). Tricher entraîne une exclusion immédiate des Giveaways et un possible bannissement.`,
+  });
+}
+
+async function buildMyInvitesEmbed(interaction, target) {
+  const { guild } = interaction;
+  const invites = await guild.invites.fetch();
+  const userInvites = invites.filter(i => i.inviter && i.inviter.id === target.id);
+  const totalUses = userInvites.reduce((sum, i) => sum + (i.uses || 0), 0);
+
+  return brandedEmbed({
+    title: `📊 Invitations de ${target.username}`,
+    description: `${target.toString()} a invité **${totalUses}** membre(s) sur le serveur.`,
+    thumbnail: target.displayAvatarURL(),
+    banner: 'gift',
+  });
+}
+
+async function buildTopInvitesEmbed(interaction) {
+  const { guild } = interaction;
+  const invites = await guild.invites.fetch();
+  const members = await guild.members.fetch();
+
+  const inviteCounts = new Map();
+  members.forEach(member => {
+    if (!member.user.bot) inviteCounts.set(member.user.id, { uses: 0, user: member.user });
+  });
+  invites.forEach(invite => {
+    if (invite.inviter && !invite.inviter.bot) {
+      const inviterId = invite.inviter.id;
+      const current = inviteCounts.get(inviterId) || { uses: 0, user: invite.inviter };
+      current.uses += invite.uses || 0;
+      inviteCounts.set(inviterId, current);
+    }
+  });
+
+  const sorted = Array.from(inviteCounts.values()).sort((a, b) => b.uses - a.uses).slice(0, 15);
+  if (sorted.length === 0) {
+    return brandedEmbed({ title: 'Aucun membre trouvé.', banner: 'leaderboard' });
+  }
+
+  const description = sorted
+    .map((inv, index) => {
+      const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : '🔹';
+      return `${medal} **${inv.user.username}** — ${inv.uses} invitation(s)`;
+    })
+    .join('\n');
+
+  return brandedEmbed({ title: '🏆 Classement des Recruteurs', description, thumbnail: guild.iconURL(), banner: 'leaderboard' });
+}
+
+function buildInvitesPanelRow() {
+  const menu = new StringSelectMenuBuilder()
+    .setCustomId('invites_panel')
+    .setPlaceholder('📨 Choisis une option')
+    .addOptions(
+      { label: 'Mon lien d\'invitation', description: 'Récupère ton lien personnel à partager', value: 'link', emoji: '🔗' },
+      { label: 'Mes invitations', description: 'Combien de membres as-tu invité ?', value: 'mine', emoji: '📊' },
+      { label: 'Classement', description: 'Top des meilleurs recruteurs du serveur', value: 'top', emoji: '🏆' },
+    );
+  return new ActionRowBuilder().addComponents(menu);
+}
 
 module.exports = [
   new SlashCommandBuilder().setName('ping').setDescription('Affiche la latence du bot'),
@@ -21,7 +111,11 @@ module.exports = [
   new SlashCommandBuilder().setName('say').setDescription('Fait parler le bot').addStringOption(opt => opt.setName('message').setDescription('Message').setRequired(true)),
   new SlashCommandBuilder().setName('invites').setDescription('Affiche le nombre d\'invitations d\'un membre').addUserOption(opt => opt.setName('utilisateur').setDescription('Membre ciblé (laisser vide pour voir ses propres stats)').setRequired(false)),
   new SlashCommandBuilder().setName('topinvites').setDescription('Affiche le classement des meilleurs recruteurs du serveur'),
-  new SlashCommandBuilder().setName('invite').setDescription('Affiche votre lien d\'invitation et explique comment inviter')
+  new SlashCommandBuilder().setName('invite').setDescription('Affiche votre lien d\'invitation et explique comment inviter'),
+  new SlashCommandBuilder()
+    .setName('setup_invites')
+    .setDescription('📨 Installe le panneau d\'invitations (lien / stats / classement)')
+    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 ];
 
 module.exports.execute = async (interaction) => {
@@ -118,73 +212,18 @@ module.exports.execute = async (interaction) => {
 
   if (commandName === 'invites') {
     const target = options.getUser('utilisateur') || interaction.user;
-
     try {
-      const invites = await guild.invites.fetch();
-      const userInvites = invites.filter(i => i.inviter && i.inviter.id === target.id);
-
-      let totalUses = 0;
-      userInvites.forEach(invite => {
-        totalUses += invite.uses || 0;
-      });
-
-      const embed = brandedEmbed({
-        title: `📨 Invitations de ${target.username}`,
-        description: `${target.toString()} a invité **${totalUses}** membre(s) sur le serveur.`,
-        thumbnail: target.displayAvatarURL(),
-        banner: 'gift',
-      });
-
+      const embed = await buildMyInvitesEmbed(interaction, target);
       return interaction.reply({ embeds: [embed] });
     } catch (err) {
       console.error(err);
       return interaction.reply({ embeds: [brandedEmbed({ title: '❌ Erreur', description: `Impossible de récupérer les données : \`${err.message}\``, color: 0xFF1E56 })], ephemeral: true });
     }
   }
+
   if (commandName === 'topinvites') {
     try {
-      const invites = await guild.invites.fetch();
-      const members = await guild.members.fetch();
-
-      const inviteCounts = new Map();
-
-      members.forEach(member => {
-        if (!member.user.bot) {
-          inviteCounts.set(member.user.id, { uses: 0, user: member.user });
-        }
-      });
-
-      invites.forEach(invite => {
-        if (invite.inviter && !invite.inviter.bot) {
-          const inviterId = invite.inviter.id;
-          const currentUses = inviteCounts.get(inviterId) || { uses: 0, user: invite.inviter };
-          currentUses.uses += invite.uses || 0;
-          inviteCounts.set(inviterId, currentUses);
-        }
-      });
-
-      const sortedInvites = Array.from(inviteCounts.values())
-        .sort((a, b) => b.uses - a.uses)
-        .slice(0, 15);
-
-      if (sortedInvites.length === 0) {
-        return interaction.reply({ embeds: [brandedEmbed({ title: 'Aucun membre trouvé.', banner: 'leaderboard' })], ephemeral: true });
-      }
-
-      const description = sortedInvites
-        .map((inv, index) => {
-          const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : '🔹';
-          return `${medal} **${inv.user.username}** — ${inv.uses} invitation(s)`;
-        })
-        .join('\n');
-
-      const embed = brandedEmbed({
-        title: '🏆 Classement des Recruteurs',
-        description,
-        thumbnail: guild.iconURL(),
-        banner: 'leaderboard',
-      });
-
+      const embed = await buildTopInvitesEmbed(interaction);
       return interaction.reply({ embeds: [embed] });
     } catch (err) {
       console.error(err);
@@ -194,41 +233,45 @@ module.exports.execute = async (interaction) => {
 
   if (commandName === 'invite') {
     try {
-      let channel = interaction.channel;
-      if (!channel || channel.type !== ChannelType.GuildText) {
-        channel = guild.channels.cache.find(c => c.type === ChannelType.GuildText);
-      }
-
-      let inviteUrl = '';
-      if (channel) {
-        const invite = await channel.createInvite({
-          maxAge: 0,
-          maxUses: 0,
-          unique: true,
-          reason: `Créé par ${interaction.user.tag} via /invite`
-        }).catch(() => null);
-
-        if (invite) {
-          inviteUrl = invite.url;
-        }
-      }
-
-      const embed = brandedEmbed({
-        title: '📨 Inviter des amis',
-        banner: 'gift',
-        description: `Pour inviter des amis et participer au concours d'invitations :\n\n` +
-          `**1. Crée ton propre lien d'invitation :**\n` +
-          (inviteUrl ? `👉 Voici ton lien personnel : **${inviteUrl}**\n` : `👉 Utilise l'interface Discord : clic droit sur le serveur → **Inviter des gens**.\n`) +
-          `\n**2. ⚠️ Règle importante :**\n` +
-          `Pour que tes invitations soient comptabilisées, **tu dois partager ton propre lien**. Si tes amis utilisent un autre lien, ton score n'augmentera pas.\n` +
-          `\n**3. 🚫 Doubles comptes interdits :**\n` +
-          `Notre système de sécurité détecte et exclut automatiquement les doubles comptes (comptes récents ou suspects). Tricher entraîne une exclusion immédiate des Giveaways et un possible bannissement.`,
-      });
-
+      const embed = await buildInviteLinkEmbed(interaction);
       return interaction.reply({ embeds: [embed] });
     } catch (err) {
       console.error(err);
       return interaction.reply({ embeds: [brandedEmbed({ title: '❌ Erreur', description: 'Assure-toi que le bot a la permission "Gérer le serveur" et "Créer une invitation".', color: 0xFF1E56 })], ephemeral: true });
     }
+  }
+
+  if (commandName === 'setup_invites') {
+    const embed = brandedEmbed({
+      title: '📨 Centre d\'invitations Rositaa',
+      banner: 'gift',
+      description:
+        'Invite tes amis sur le serveur et grimpe dans le classement des recruteurs !\n\n' +
+        '**🔗 Mon lien d\'invitation** — génère ton lien personnel à partager\n' +
+        '**📊 Mes invitations** — combien de membres as-tu invité ?\n' +
+        '**🏆 Classement** — qui sont les meilleurs recruteurs du serveur ?\n\n' +
+        'Choisis une option dans le menu ci-dessous 👇',
+    });
+    await interaction.channel.send({ embeds: [embed], components: [buildInvitesPanelRow()] });
+    return interaction.reply({ content: '✅ Panneau d\'invitations installé.', ephemeral: true });
+  }
+};
+
+module.exports.handleSelectMenu = async (interaction) => {
+  if (interaction.customId !== 'invites_panel') return;
+
+  await interaction.deferReply({ ephemeral: true });
+  const choice = interaction.values[0];
+
+  try {
+    let embed;
+    if (choice === 'link') embed = await buildInviteLinkEmbed(interaction);
+    else if (choice === 'mine') embed = await buildMyInvitesEmbed(interaction, interaction.user);
+    else embed = await buildTopInvitesEmbed(interaction);
+
+    return interaction.editReply({ embeds: [embed] });
+  } catch (err) {
+    console.error(err);
+    return interaction.editReply({ embeds: [brandedEmbed({ title: '❌ Erreur', description: `Impossible de récupérer les données : \`${err.message}\``, color: 0xFF1E56 })] });
   }
 };

@@ -330,6 +330,27 @@ client.on('interactionCreate', async interaction => {
         return;
     }
 
+    // Menu deroulant d'achat dans /shop
+    if (interaction.isStringSelectMenu() && interaction.customId.startsWith('shop_buy_')) {
+        const economyMod = require('./commands/economy');
+        if (economyMod.handleSelectMenu) await economyMod.handleSelectMenu(interaction);
+        return;
+    }
+
+    // Menu deroulant du panneau d'invitations
+    if (interaction.isStringSelectMenu() && interaction.customId === 'invites_panel') {
+        const utilitairesMod = require('./commands/utilitaires');
+        if (utilitairesMod.handleSelectMenu) await utilitairesMod.handleSelectMenu(interaction);
+        return;
+    }
+
+    // Modal du role personnalise achete en boutique
+    if (interaction.isModalSubmit() && interaction.customId === 'custom_role_modal') {
+        const economyMod = require('./commands/economy');
+        if (economyMod.handleModal) await economyMod.handleModal(interaction);
+        return;
+    }
+
     // Modal Submit handler
   if (interaction.isModalSubmit()) {
     if (interaction.customId === 'giveaway_modal') {
