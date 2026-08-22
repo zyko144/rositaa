@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, PermissionFlagsBits, AttachmentBuilder, ModalBuilder, TextInputBuilder, TextInputStyle } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, PermissionFlagsBits, AttachmentBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, ChannelType } = require('discord.js');
 const fs = require('fs');
 const { brandedEmbed, buildBrandedReply, PINK_ALERT } = require('../utils/theme');
 
@@ -64,9 +64,11 @@ module.exports = [
   new SlashCommandBuilder().setName('setup_tickets')
     .setDescription('Installe le panneau des tickets')
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
-    
 
-    
+  new SlashCommandBuilder().setName('setup_shop_category')
+    .setDescription('🌸 Crée la catégorie Boutique & Jeux avec ses salons explicatifs')
+    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+
   new SlashCommandBuilder().setName('giveaway')
     .setDescription('Ouvre le formulaire pour créer un giveaway')
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
@@ -196,6 +198,86 @@ module.exports.execute = async (interaction) => {
 
     await interaction.channel.send({ embeds: [embed], components: [row], files: [attachment] });
     return interaction.reply({ content: '✅ Panneau de tickets installé.', ephemeral: true });
+  }
+
+  if (commandName === 'setup_shop_category') {
+    await interaction.deferReply({ ephemeral: true });
+    const { guild } = interaction;
+
+    let category = guild.channels.cache.find(c => c.type === ChannelType.GuildCategory && c.name === '🌸 BOUTIQUE & JEUX');
+    if (!category) {
+      category = await guild.channels.create({ name: '🌸 BOUTIQUE & JEUX', type: ChannelType.GuildCategory });
+    }
+
+    async function ensureChannel(name) {
+      let channel = guild.channels.cache.find(c => c.parentId === category.id && c.name === name);
+      if (!channel) {
+        channel = await guild.channels.create({ name, type: ChannelType.GuildText, parent: category.id });
+      }
+      return channel;
+    }
+
+    const HOW_TO_EARN = "💬 Tu gagnes **1 à 3 🌹 roses** à chaque message envoyé sur le serveur (cooldown d'1 minute pour éviter le spam). Tu peux aussi en recevoir avec `/donner`.";
+
+    const boutiqueChannel = await ensureChannel('🛍️-boutique');
+    const { embed: boutiqueEmbed, files: boutiqueFiles } = await buildBrandedReply({
+      title: '🛍️ Bienvenue dans la Boutique !',
+      banner: 'cosmetic',
+      description:
+        `Tape \`/shop\` pour parcourir la boutique et acheter directement depuis le menu déroulant.\n\n` +
+        `**Ce que tu peux acheter avec tes roses :**\n` +
+        `👑 Des rôles exclusifs (Actif, VIP, Premium, Légende)\n` +
+        `🎨 Des couleurs de pseudo personnalisées\n` +
+        `🎰 Des boosts pour le casino\n` +
+        `✨ Un rôle 100% personnalisé (nom + couleur de ton choix)\n\n` +
+        `**💰 Comment avoir des roses ?**\n${HOW_TO_EARN}`,
+    });
+    await boutiqueChannel.send({ embeds: [boutiqueEmbed], files: boutiqueFiles });
+
+    const casinoChannel = await ensureChannel('🎰-casino');
+    const { embed: casinoEmbed, files: casinoFiles } = await buildBrandedReply({
+      title: '🎰 Bienvenue au Casino !',
+      banner: 'fun',
+      description:
+        `Mise tes roses et tente ta chance :\n\n` +
+        `**🪙 \`/casino coinflip <mise> <pile|face>\`**\n` +
+        `Pile ou face classique : devine juste et tu doubles ta mise.\n\n` +
+        `**🎰 \`/casino slots <mise>\`**\n` +
+        `3 symboles identiques = jackpot x5 • 2 identiques = x1.5 • sinon tu perds ta mise.\n\n` +
+        `**💰 Comment avoir des roses ?**\n${HOW_TO_EARN}\n\n` +
+        `⚠️ Joue de manière responsable, ce ne sont que des roses virtuelles pour s'amuser !`,
+    });
+    await casinoChannel.send({ embeds: [casinoEmbed], files: casinoFiles });
+
+    const giftChannel = await ensureChannel('🎁-gift');
+    const { embed: giftEmbed, files: giftFiles } = await buildBrandedReply({
+      title: '🎁 Bienvenue dans les Cadeaux !',
+      banner: 'gift',
+      description:
+        `Ici sont annoncés les giveaways organisés par le staff.\n\n` +
+        `**Comment participer ?**\n` +
+        `Clique simplement sur le bouton **🎉 Participer** sous l'annonce. Certains giveaways demandent une condition (ex : rejoindre un serveur partenaire) — lis bien le message avant de participer !\n\n` +
+        `🚫 **Anti-triche :** la création de doubles comptes pour participer plusieurs fois entraîne une exclusion immédiate et un possible bannissement.`,
+    });
+    await giftChannel.send({ embeds: [giftEmbed], files: giftFiles });
+
+    const explicationsChannel = await ensureChannel('📖-explications');
+    const { embed: explicationsEmbed, files: explicationsFiles } = await buildBrandedReply({
+      title: '📖 Tout comprendre sur Rositaa 🌸',
+      banner: 'success',
+      description: "Le guide complet du serveur, section par section 👇",
+      fields: [
+        { name: '🌹 Les roses', value: HOW_TO_EARN + '\nConsulte ton solde avec `/roses` et le classement avec `/top_roses`.' },
+        { name: '🛍️ La boutique', value: `\`/shop\` pour acheter des rôles, couleurs et boosts avec tes roses. Voir ${boutiqueChannel}.` },
+        { name: '🎰 Le casino', value: `\`/casino coinflip\` et \`/casino slots\` pour miser tes roses. Voir ${casinoChannel}.` },
+        { name: '🎁 Les cadeaux', value: `Giveaways organisés par le staff, un bouton pour participer. Voir ${giftChannel}.` },
+        { name: '🎫 Le support', value: "Besoin d'aide ? Ouvre un ticket privé avec l'équipe depuis le panneau de tickets." },
+        { name: '📨 Les invitations', value: "Invite tes amis pour grimper au classement des recruteurs — panneau dédié avec ton lien personnel." },
+      ],
+    });
+    await explicationsChannel.send({ embeds: [explicationsEmbed], files: explicationsFiles });
+
+    return interaction.editReply({ content: `✅ Catégorie et salons créés : ${boutiqueChannel}, ${casinoChannel}, ${giftChannel}, ${explicationsChannel}` });
   }
 
   if (commandName === 'giveaway') {
