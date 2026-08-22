@@ -39,6 +39,15 @@ function checkVIP(interaction) {
 }
 
 module.exports = [
+
+  new SlashCommandBuilder().setName('lockdown')
+    .setDescription('??? Anti-Raid Ultime: Verrouille tous les salons du serveur !')
+    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+    
+  new SlashCommandBuilder().setName('unlock')
+    .setDescription('??? Anti-Raid Ultime: D�verrouille les salons du serveur !')
+    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+
   new SlashCommandBuilder().setName('setup_verification')
     .setDescription('Installe le bouton de vérification (Anti-Raid)')
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
@@ -74,6 +83,41 @@ module.exports = [
 ];
 
 module.exports.execute = async (interaction) => {
+
+  if (commandName === 'lockdown') {
+    await interaction.deferReply({ ephemeral: false });
+    try {
+      const channels = await interaction.guild.channels.fetch();
+      let count = 0;
+      for (const [id, channel] of channels) {
+        if (channel && channel.type === 0) { // 0 = GuildText
+          await channel.permissionOverwrites.edit(interaction.guild.roles.everyone.id, { SendMessages: false }).catch(()=>{});
+          count++;
+        }
+      }
+      return interaction.editReply('?? **LOCKDOWN ACTIV�** ??\n\nLe serveur est actuellement en mode Anti-Raid. ' + count + ' salons ont �t� verrouill�s. Les membres normaux ne peuvent plus parler.\nUtilisez `/unlock` pour annuler.');
+    } catch (e) {
+      return interaction.editReply('? Erreur: ' + e.message);
+    }
+  }
+
+  if (commandName === 'unlock') {
+    await interaction.deferReply({ ephemeral: false });
+    try {
+      const channels = await interaction.guild.channels.fetch();
+      let count = 0;
+      for (const [id, channel] of channels) {
+        if (channel && channel.type === 0) { // 0 = GuildText
+          await channel.permissionOverwrites.edit(interaction.guild.roles.everyone.id, { SendMessages: null }).catch(()=>{});
+          count++;
+        }
+      }
+      return interaction.editReply('? **LOCKDOWN D�SACTIV�** ?\n\n' + count + ' salons ont �t� d�verrouill�s. Le serveur reprend son fonctionnement normal.');
+    } catch (e) {
+      return interaction.editReply('? Erreur: ' + e.message);
+    }
+  }
+
   const { commandName, options, client } = interaction;
   
   if (commandName === 'setup_verification') {
