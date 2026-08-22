@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Discord - Tableau de Bord des Invitations</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --bg-color: #0f1115;
+            --card-bg: #1a1d24;
+            --accent: #5865F2;
+            --accent-hover: #4752C4;
+            --text-main: #ffffff;
+            --text-muted: #a3a6aa;
+            --border: #2f333c;
+            --gold: #FFD700;
+            --silver: #C0C0C0;
+            --bronze: #CD7F32;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            min-height: 100vh;
+        }
+
+        .header {
+            background: linear-gradient(180deg, rgba(88, 101, 242, 0.15) 0%, rgba(15, 17, 21, 0) 100%);
+            padding: 4rem 2rem 2rem;
+            text-align: center;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .header h1 i {
+            color: var(--accent);
+            margin-right: 10px;
+        }
+
+        .header p {
+            color: var(--text-muted);
+            font-size: 1.1rem;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 3rem 2rem;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+        }
+
+        @media (max-width: 900px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border-radius: 16px;
+            border: 1px solid var(--border);
+            padding: 2rem;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .card-header h2 {
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+
+        .card-header i {
+            font-size: 1.5rem;
+            margin-right: 12px;
+            color: var(--accent);
+        }
+
+        .list {
+            list-style: none;
+        }
+
+        .list-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1rem;
+            border-radius: 8px;
+            background-color: rgba(255,255,255,0.02);
+            margin-bottom: 0.5rem;
+            transition: transform 0.2s, background-color 0.2s;
+        }
+
+        .list-item:hover {
+            transform: translateX(5px);
+            background-color: rgba(255,255,255,0.05);
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: var(--text-muted);
+        }
+
+        .details h3 {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        .details p {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        .stat-badge {
+            background-color: var(--accent);
+            color: white;
+            padding: 0.4rem 0.8rem;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .rank-1 .stat-badge { background-color: var(--gold); color: #000; }
+        .rank-2 .stat-badge { background-color: var(--silver); color: #000; }
+        .rank-3 .stat-badge { background-color: var(--bronze); color: #fff; }
+
+        .loader {
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-muted);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 3rem 1rem;
+            color: var(--text-muted);
+        }
+        
+        .empty-state i {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+
+        /* --- Accordion Styles --- */
+        details.recruiter-category {
+            margin-top: 1rem;
+            background-color: rgba(255,255,255,0.02);
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        details.recruiter-category[open] {
+            background-color: rgba(255,255,255,0.04);
+            border-color: rgba(88, 101, 242, 0.4);
+        }
+
+        summary.recruiter-summary {
+            padding: 1rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            font-weight: 600;
+            color: var(--accent);
+            list-style: none;
+            outline: none;
+            user-select: none;
+        }
+
+        summary.recruiter-summary::-webkit-details-marker {
+            display: none;
+        }
+
+        summary.recruiter-summary i.caret {
+            margin-right: 12px;
+            transition: transform 0.2s;
+            color: var(--text-muted);
+        }
+
+        details.recruiter-category[open] summary.recruiter-summary i.caret {
+            transform: rotate(90deg);
+            color: var(--accent);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1><i class="fa-solid fa-users"></i> Tableau de Bord des Invitations</h1>
+        <p>Suivez en temps réel l'évolution de la communauté</p>
+    </div>
+
+    <div class="container">
+        <!-- Leaderboard -->
+        <div class="card">
+            <div class="card-header">
+                <i class="fa-solid fa-trophy"></i>
+                <h2>Le Podium (Top Recruteurs)</h2>
+            </div>
+            <ul class="list" id="leaderboard-list">
+                <div class="loader">Chargement du classement...</div>
+            </ul>
+        </div>
+
+        <!-- Historique -->
+        <div class="card">
+            <div class="card-header">
+                <i class="fa-solid fa-clock-rotate-left"></i>
+                <h2>Historique Détaillé (Derniers Arrivés)</h2>
+            </div>
+            <ul class="list" id="history-list">
+                <div class="loader">Chargement de l'historique...</div>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        async function fetchData() {
+            try {
+                const response = await fetch('/api/invites');
+                const data = await response.json();
+                
+                renderLeaderboard(data.leaderboard);
+                renderHistory(data.history);
+            } catch (error) {
+                console.error("Erreur lors de la récupération des données:", error);
+                document.getElementById('leaderboard-list').innerHTML = '<div class="empty-state">Erreur de connexion au serveur Discord.</div>';
+                document.getElementById('history-list').innerHTML = '<div class="empty-state">Erreur de connexion au serveur Discord.</div>';
+            }
+        }
+
+        function renderLeaderboard(leaderboard) {
+            const list = document.getElementById('leaderboard-list');
+            list.innerHTML = '';
+
+            if (!leaderboard || leaderboard.length === 0) {
+                list.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fa-solid fa-ghost"></i>
+                        <p>Aucune invitation pour le moment.</p>
+                    </div>`;
+                return;
+            }
+
+            leaderboard.forEach((user, index) => {
+                const rankClass = index < 3 ? `rank-${index + 1}` : '';
+                const initial = user.username ? user.username.charAt(0).toUpperCase() : '?';
+                
+                list.innerHTML += `
+                    <li class="list-item ${rankClass}">
+                        <div class="user-info">
+                            <div class="avatar">${initial}</div>
+                            <div class="details">
+                                <h3>${user.username}</h3>
+                                <p>Recruteur Officiel</p>
+                            </div>
+                        </div>
+                        <div class="stat-badge">${user.uses} invites</div>
+                    </li>
+                `;
+            });
+        }
+
+        function renderHistory(history) {
+            const list = document.getElementById('history-list');
+            list.innerHTML = '';
+
+            if (!history || history.length === 0) {
+                list.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fa-solid fa-clock"></i>
+                        <p>L'historique commence à s'enregistrer maintenant.</p>
+                        <p style="font-size: 0.8rem; margin-top: 10px;">Les prochaines arrivées s'afficheront ici.</p>
+                    </div>`;
+                return;
+            }
+
+            // Grouper par recruteur
+            const grouped = {};
+            history.forEach(entry => {
+                if (!grouped[entry.inviterUsername]) {
+                    grouped[entry.inviterUsername] = [];
+                }
+                grouped[entry.inviterUsername].push(entry);
+            });
+
+            // Trier les recruteurs par nombre d'invitations (décroissant)
+            const sortedRecruiters = Object.keys(grouped).sort((a, b) => grouped[b].length - grouped[a].length);
+
+            sortedRecruiters.forEach((recruiter, index) => {
+                let html = `
+                    <details class="recruiter-category" ${index === 0 ? 'open' : ''}>
+                        <summary class="recruiter-summary">
+                            <i class="fa-solid fa-caret-right caret"></i>
+                            <i class="fa-solid fa-folder-open" style="margin-right: 8px;"></i>
+                            ${recruiter} <span style="color: var(--text-muted); font-size: 0.85rem; font-weight: 400; margin-left: 8px;">(${grouped[recruiter].length} invité(s))</span>
+                        </summary>
+                        <div style="padding: 0 1rem 1rem 1rem;">
+                `;
+
+                // Inverser pour avoir les plus récents en haut pour chaque recruteur
+                const recruiterHistory = [...grouped[recruiter]].reverse();
+                
+                recruiterHistory.forEach(entry => {
+                    const date = new Date(entry.timestamp).toLocaleString('fr-FR', {
+                        day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit'
+                    });
+                    
+                    html += `
+                        <div class="list-item" style="margin-left: 0.5rem; border-left: 2px solid var(--accent); border-radius: 0 8px 8px 0; background-color: rgba(0,0,0,0.2);">
+                            <div class="user-info">
+                                <div class="avatar" style="width: 32px; height: 32px; background-color: var(--card-bg); color: var(--text-main); border: 1px solid var(--border); font-size: 0.8rem;">
+                                    <i class="fa-solid fa-user"></i>
+                                </div>
+                                <div class="details">
+                                    <h3 style="font-size: 0.95rem;">${entry.invitedUsername}</h3>
+                                </div>
+                            </div>
+                            <div style="font-size: 0.75rem; color: var(--text-muted);">
+                                ${date}
+                            </div>
+                        </div>
+                    `;
+                });
+
+                html += `</div></details>`;
+                list.innerHTML += html;
+            });
+        }
+
+        // Rafraîchir toutes les 15 secondes
+        fetchData();
+        setInterval(fetchData, 15000);
+    </script>
+</body>
+</html>
