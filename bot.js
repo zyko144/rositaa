@@ -5,6 +5,7 @@ require('dotenv').config();
 const path = require('path');
 const { initDatabase, readDatabase, writeDatabase } = require('./utils/db');
 const { brandedEmbed, PINK_ALERT } = require('./utils/theme');
+const { buildManageRow: buildTicketManageRow, handleTicketManage } = require('./utils/ticketManage');
 
 const activeTicketCreations = new Set(); // Prevent double-click ticket race conditions
 
@@ -323,6 +324,12 @@ client.on('interactionCreate', async interaction => {
         return;
     }
 
+    // Menu deroulant de gestion des tickets (prendre en charge / relacher / fermer)
+    if (interaction.isStringSelectMenu() && interaction.customId === 'ticket_manage') {
+        await handleTicketManage(interaction);
+        return;
+    }
+
     // Modal Submit handler
   if (interaction.isModalSubmit()) {
     if (interaction.customId === 'giveaway_modal') {
@@ -504,9 +511,7 @@ client.on('interactionCreate', async interaction => {
           permissionOverwrites,
         });
 
-        const row = new ActionRowBuilder().addComponents(
-          new ButtonBuilder().setCustomId('close_ticket').setLabel('Fermer le ticket').setEmoji('🔒').setStyle(ButtonStyle.Danger)
-        );
+        const row = buildTicketManageRow(ticketChannel.id);
 
         const attachment = new AttachmentBuilder('./assets/ticket_banner.png');
         const embed = new EmbedBuilder()

@@ -1,5 +1,15 @@
-﻿const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
+﻿const { SlashCommandBuilder, EmbedBuilder, AttachmentBuilder } = require('discord.js');
 const { readDatabase, writeDatabase } = require('../utils/db');
+const { renderCoinflipGif } = require('../utils/cards/coinflipGif');
+const { renderSlotsGif } = require('../utils/cards/slotsGif');
+
+const SLOT_SYMBOLS = [
+    { emoji: '🍒', key: 'cherry' },
+    { emoji: '🍋', key: 'lemon' },
+    { emoji: '🔔', key: 'bell' },
+    { emoji: '💎', key: 'gem' },
+    { emoji: '🎰', key: 'slotmachine' },
+];
 
 function getDb() {
     const db = readDatabase();
@@ -44,61 +54,65 @@ module.exports.execute = async (interaction) => {
     if (roses < bet) {
         return interaction.reply({ content: `❌ Tu n'as pas assez de roses ! Tu n'en as que **${roses}**.`, ephemeral: true });
     }
-    
+
+    await interaction.deferReply();
+
     if (subCommand === 'coinflip') {
         const choice = interaction.options.getString('choix');
         const result = Math.random() < 0.5 ? 'pile' : 'face';
-        
-        if (choice === result) {
-            addRoses(interaction.user.id, bet);
-            const embed = new EmbedBuilder()
-                .setColor(0x00FF00)
-                .setAuthor({ name: '🪙 COINFLIP - GAGNÉ !' })
-                .setDescription(`La pièce est tombée sur **${result.toUpperCase()}** !\n\n🎉 Tu as gagné **${bet * 2} 🌹 roses** !\n💳 Nouveau solde : \`${roses + bet} roses\``)
-                .setImage('https://i.pinimg.com/originals/a0/0b/4f/a00b4f8d9b13926838a05c30fb576ef2.gif');
-            return interaction.reply({ embeds: [embed] });
-        } else {
-            addRoses(interaction.user.id, -bet);
-            const embed = new EmbedBuilder()
-                .setColor(0xFF0000)
-                .setAuthor({ name: '🪙 COINFLIP - PERDU !' })
-                .setDescription(`La pièce est tombée sur **${result.toUpperCase()}** !\n\n💀 Tu as perdu tes **${bet} 🌹 roses**.\n💳 Nouveau solde : \`${roses - bet} roses\``)
-                .setImage('https://i.pinimg.com/originals/a0/0b/4f/a00b4f8d9b13926838a05c30fb576ef2.gif');
-            return interaction.reply({ embeds: [embed] });
-        }
+        const win = choice === result;
+        const newBalance = roses + (win ? bet : -bet);
+        addRoses(interaction.user.id, win ? bet : -bet);
+
+        const gif = await renderCoinflipGif({ result });
+        const attachment = new AttachmentBuilder(gif, { name: 'coinflip.gif' });
+
+        const embed = new EmbedBuilder()
+            .setColor(win ? 0x00e5a0 : 0xff1e56)
+            .setAuthor({ name: win ? '🪙 COINFLIP - GAGNÉ !' : '🪙 COINFLIP - PERDU !' })
+            .setDescription(
+                win
+                    ? `La pièce est tombée sur **${result.toUpperCase()}** !\n\n🎉 Tu as gagné **${bet} 🌹 roses** !\n💳 Nouveau solde : \`${newBalance} roses\``
+                    : `La pièce est tombée sur **${result.toUpperCase()}** !\n\n💀 Tu as perdu tes **${bet} 🌹 roses**.\n💳 Nouveau solde : \`${newBalance} roses\``
+            )
+            .setImage('attachment://coinflip.gif');
+
+        return interaction.editReply({ embeds: [embed], files: [attachment] });
     }
-    
+
     if (subCommand === 'slots') {
-        const emojis = ['🍒', '🍋', '🔔', '💎', '🎰'];
-        const slot1 = emojis[Math.floor(Math.random() * emojis.length)];
-        const slot2 = emojis[Math.floor(Math.random() * emojis.length)];
-        const slot3 = emojis[Math.floor(Math.random() * emojis.length)];
-        
+        const spin = () => SLOT_SYMBOLS[Math.floor(Math.random() * SLOT_SYMBOLS.length)];
+        const s1 = spin();
+        const s2 = spin();
+        const s3 = spin();
+
         let multiplier = 0;
-        if (slot1 === slot2 && slot2 === slot3) {
+        if (s1.key === s2.key && s2.key === s3.key) {
             multiplier = 5; // Jackpot
-        } else if (slot1 === slot2 || slot2 === slot3 || slot1 === slot3) {
+        } else if (s1.key === s2.key || s2.key === s3.key || s1.key === s3.key) {
             multiplier = 1.5; // Petite victoire
         }
-        
+
         const winAmount = Math.floor(bet * multiplier);
-        
-        if (multiplier > 0) {
-            addRoses(interaction.user.id, winAmount - bet);
-            const embed = new EmbedBuilder()
-                .setColor(0x00FF00)
-                .setAuthor({ name: '🎰 MACHINES À SOUS - GAGNÉ !' })
-                .setDescription(`\n╔═══════════╗\n║  ${slot1}  ║  ${slot2}  ║  ${slot3}  ║\n╚═══════════╝\n\n🎉 **VICTOIRE !** Tu gagnes **${winAmount} 🌹 roses** !\n💳 Nouveau solde : \`${roses + (winAmount - bet)} roses\``)
-                .setImage('https://i.pinimg.com/originals/24/09/b3/2409b36d0db3b4cf7f29a00778c18bd2.gif');
-            return interaction.reply({ embeds: [embed] });
-        } else {
-            addRoses(interaction.user.id, -bet);
-            const embed = new EmbedBuilder()
-                .setColor(0xFF0000)
-                .setAuthor({ name: '🎰 MACHINES À SOUS - PERDU !' })
-                .setDescription(`\n╔═══════════╗\n║  ${slot1}  ║  ${slot2}  ║  ${slot3}  ║\n╚═══════════╝\n\n💀 **PERDU !** Tu as perdu tes **${bet} 🌹 roses**.\n💳 Nouveau solde : \`${roses - bet} roses\``)
-                .setImage('https://i.pinimg.com/originals/24/09/b3/2409b36d0db3b4cf7f29a00778c18bd2.gif');
-            return interaction.reply({ embeds: [embed] });
-        }
+        const win = multiplier > 0;
+        const newBalance = roses + (win ? winAmount - bet : -bet);
+        addRoses(interaction.user.id, win ? winAmount - bet : -bet);
+
+        const resultLabel = multiplier === 5 ? 'JACKPOT !' : win ? 'GAGNE !' : 'PERDU';
+        const gif = await renderSlotsGif({ symbolKeys: [s1.key, s2.key, s3.key], win, resultLabel });
+        const attachment = new AttachmentBuilder(gif, { name: 'slots.gif' });
+
+        const combo = `${s1.emoji}  ${s2.emoji}  ${s3.emoji}`;
+        const embed = new EmbedBuilder()
+            .setColor(win ? 0x00e5a0 : 0xff1e56)
+            .setAuthor({ name: win ? '🎰 MACHINES À SOUS - GAGNÉ !' : '🎰 MACHINES À SOUS - PERDU !' })
+            .setDescription(
+                win
+                    ? `${combo}\n\n🎉 **VICTOIRE !** Tu gagnes **${winAmount} 🌹 roses** !\n💳 Nouveau solde : \`${newBalance} roses\``
+                    : `${combo}\n\n💀 **PERDU !** Tu as perdu tes **${bet} 🌹 roses**.\n💳 Nouveau solde : \`${newBalance} roses\``
+            )
+            .setImage('attachment://slots.gif');
+
+        return interaction.editReply({ embeds: [embed], files: [attachment] });
     }
 };
