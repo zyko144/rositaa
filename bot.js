@@ -1,72 +1,10 @@
 const { Client, GatewayIntentBits, Partials, EmbedBuilder, Collection, ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType, PermissionFlagsBits, AttachmentBuilder } = require('discord.js');
 const express = require('express');
 const fs = require('fs');
-const Parser = require('rss-parser');
-const parser = new Parser();
 const discordTranscripts = require('discord-html-transcripts');
 require('dotenv').config();
-const { GoogleGenAI } = require('@google/genai');
 const path = require('path');
-const { consumeQuota, getRemainingQuota } = require('./utils/quota');
 
-let rawKeys = process.env.GEMINI_API_KEYS || '';
-let apiKeys = rawKeys.split(',').map(k => k.trim()).filter(k => k.length > 0);
-let currentKeyIndex = 0;
-const keyCooldowns = new Map();
-
-let vertexModelInstance = null;
-let vertexInitialized = false;
-
-function getGeminiModel() {
-  const sysInstr = "Tu es l'assistant IA officiel de ce serveur Discord, doté d'un Q.I de 180 et des compétences d'un Staff Engineer de la Silicon Valley. Tu es poli, extrêmement intelligent et concis. RÈGLE ABSOLUE POUR LE CODE : Tu es l'ultime expert en développement (Web, Backend, IA, DevOps). Quand on te demande du code, tu écris du code d'une qualité exceptionnelle, niveau production, commenté, typé et optimisé. Tu ne dois JAMAIS utiliser de code à trou ou de raccourcis. Ne mets jamais de commentaires comme '// suite du code' ou '...'. Tu dois OBLIGATOIREMENT écrire l'intégralité du code demandé de A à Z, sans aucune coupure, même si le code fait des centaines de lignes. Si le code est long, découpe-le en plusieurs blocs logiques bien expliqués. Utilise toujours les meilleures pratiques modernes (ex: ES6+, typage strict, architecture propre). IMPORTANT : Si l'utilisateur te demande de générer une image MAINTENANT, invente un prompt anglais et réponds avec `[IMAGE: ton prompt]`. Sinon, réponds normalement avec l'expertise d'un vétéran du code.";
-  
-  // Priorité 1 : Vertex AI (Gemini 3.1 Pro via le fichier JSON)
-  if (process.env.VERTEX_CREDENTIALS_JSON) {
-    if (!vertexInitialized) {
-      try {
-        const creds = JSON.parse(process.env.VERTEX_CREDENTIALS_JSON);
-        
-        // GoogleGenAI SDK (Vertex mode) automatically uses GOOGLE_APPLICATION_CREDENTIALS
-        const tmpCredsPath = path.join(process.cwd(), 'vertex_credentials.json');
-        fs.writeFileSync(tmpCredsPath, process.env.VERTEX_CREDENTIALS_JSON);
-        process.env.GOOGLE_APPLICATION_CREDENTIALS = tmpCredsPath;
-        
-        vertexModelInstance = new GoogleGenAI({
-            vertexai: true,
-            project: creds.project_id,
-            location: 'global' // Reverting to global as 3.1 Pro Preview usually sits there on Vertex AI
-        });
-        vertexInitialized = true;
-      } catch (err) {
-        console.error("Erreur d'initialisation GoogleGenAI Vertex:", err);
-      }
-    }
-    if (vertexModelInstance) return { type: 'genai_vertex', client: vertexModelInstance, sysInstr };
-  }
-
-  // Priorité 2 : Fallback sur l'API Key classique (AI Studio) avec Cooldown
-  if (apiKeys.length === 0) return null;
-  
-  const now = Date.now();
-  let startIndex = currentKeyIndex;
-  
-  while (true) {
-      let candidateKey = apiKeys[currentKeyIndex];
-      let cd = keyCooldowns.get(candidateKey);
-      
-      if (!cd || now > cd) {
-          const genAI = new GoogleGenAI({ apiKey: candidateKey });
-          return { type: 'genai_studio', client: genAI, sysInstr };
-      }
-      
-      currentKeyIndex = (currentKeyIndex + 1) % apiKeys.length;
-      if (currentKeyIndex === startIndex) {
-          return null; // ALL keys are exhausted right now!
-      }
-  }
-}
-
-const aiSessions = new Map(); // userId -> chatSession
 const activeTicketCreations = new Set(); // Prevent double-click ticket race conditions
 
 // --- SERVER EXPRESS & SOCKET.IO (Keep-Alive pour Render) ---
@@ -685,14 +623,7 @@ client.on('guildMemberAdd', async member => {
        }
     }
 
-    let welcomeChannel = member.guild.channels.cache.find(c => c.name === '👋-bienvenue');
-    if (!welcomeChannel) {
-      welcomeChannel = await member.guild.channels.create({
-        name: '👋-bienvenue',
-        type: ChannelType.GuildText,
-        permissionOverwrites: [{ id: member.guild.roles.everyone.id, deny: [PermissionFlagsBits.SendMessages] }]
-      }).catch(() => null);
-    }
+    let welcomeChannel = member.guild.channels.cache.find(c => c.name.includes('bienvenue') && c.type === ChannelType.GuildText);
 
     if (welcomeChannel) {
       const inviterText = usedInvite && usedInvite.inviter 

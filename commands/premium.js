@@ -1,9 +1,5 @@
 const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, PermissionFlagsBits, AttachmentBuilder, ModalBuilder, TextInputBuilder, TextInputStyle } = require('discord.js');
 const fs = require('fs');
-const { YoutubeTranscript } = require('youtube-transcript');
-const { GoogleGenerativeAI } = require('@google/generative-ai');
-const { consumeQuota } = require('../utils/quota');
-require('dotenv').config();
 
 let rawKeys = process.env.GEMINI_API_KEYS || '';
 let apiKeys = rawKeys.split(',').map(k => k.trim()).filter(k => k.length > 0);
@@ -75,26 +71,6 @@ module.exports = [
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
     .addStringOption(opt => opt.setName('message_id').setDescription('ID du message du giveaway').setRequired(true)),
     
-  new SlashCommandBuilder().setName('viral_post')
-    .setDescription('💎 VIP: Génère un post ultra-viral pour les réseaux sociaux')
-    .addStringOption(opt => opt.setName('sujet').setDescription('Le sujet du post').setRequired(true))
-    .addStringOption(opt => opt.setName('reseau').setDescription('Twitter, LinkedIn ou Instagram ?').setRequired(true)),
-    
-  new SlashCommandBuilder().setName('code_review')
-    .setDescription('💎 VIP: Corrige et explique ton code')
-    .addStringOption(opt => opt.setName('code').setDescription('Ton code avec le bug').setRequired(true)),
-    
-  new SlashCommandBuilder().setName('copywriter')
-    .setDescription('💎 VIP: Réécrit ton texte comme un pro')
-    .addStringOption(opt => opt.setName('texte').setDescription('Le texte à réécrire').setRequired(true)),
-    
-  new SlashCommandBuilder().setName('imagine_pro')
-    .setDescription('💎 VIP: Génère une image de très haute qualité')
-    .addStringOption(opt => opt.setName('prompt').setDescription('Description de l\'image').setRequired(true)),
-    
-  new SlashCommandBuilder().setName('business_plan')
-    .setDescription('💎 VIP: Rédige un business plan complet pour ton projet')
-    .addStringOption(opt => opt.setName('projet').setDescription('Ton idée de projet').setRequired(true))
 ];
 
 module.exports.execute = async (interaction) => {
@@ -254,138 +230,5 @@ module.exports.execute = async (interaction) => {
 
   // --- COMMANDES VIP IA ---
 
-  if (commandName === 'viral_post') {
-    if (!checkVIP(interaction)) {
-      return interaction.reply({ content: "💎 **Accès refusé.** Cette commande est réservée aux membres VIP.", ephemeral: true });
-    }
-    
-    await interaction.deferReply();
-    const sujet = options.getString('sujet');
-    const reseau = options.getString('reseau');
-    
-    const prompt = `Agis comme un Copywriter d'élite de la Silicon Valley, spécialisé dans la psychologie humaine et la viralité algorithmique.
-Ton objectif strict est de rédiger un post EXTRÊMEMENT VIRAL et UNIQUE pour ${reseau}.
-Sujet : "${sujet}"
-Facteur d'unicité (pour garantir un post différent à chaque fois) : ${Math.random().toString(36).substring(2)}
 
-Règles impératives :
-- NE SOIS PAS CLICHÉ ou "robotique". Ne commence surtout pas par "Voici..." ou "Découvrez...".
-- La 1ère ligne DOIT être un "Hook" (accroche) agressif, émotionnel ou contre-intuitif qui stoppe net le scroll.
-- Le rythme doit être dynamique : phrases courtes, beaucoup de sauts de ligne, aération visuelle parfaite.
-- Adapte parfaitement le ton au réseau choisi : 
-  - Twitter/X : Punchy, tranchant, droit au but.
-  - LinkedIn : Storytelling captivant, structure "Problème -> Leçon -> Solution".
-  - Instagram : Fun, esthétique, engageant.
-- Ajoute 3 à 4 emojis bien placés (n'en abuse pas).
-- Termine par un "Call-to-Action" (CTA) irrésistible qui oblige psychologiquement les gens à commenter.
-
-Génère un angle totalement inattendu et créatif. Fais-moi une masterclass de copywriting.`;
-
-    try {
-      let response = await callVIPAI(prompt, "Tu es un Copywriter Expert. Tu crées du contenu viral garanti.");
-      const remaining = consumeQuota();
-      const footer = `\n\n*⚡ ${remaining}/12000 requêtes IA restantes aujourd'hui*`;
-      
-      const chunks = response.match(/[\s\S]{1,1900}/g) || [];
-      await interaction.editReply(`🚀 **Voici ton post viral pour ${reseau} :**`);
-      for (let i = 0; i < chunks.length; i++) {
-        let contentToSend = chunks[i];
-        if (i === chunks.length - 1) contentToSend += footer;
-        await interaction.channel.send(contentToSend);
-      }
-    } catch (error) {
-      await interaction.editReply(`❌ Impossible de générer le post. Erreur technique : ${error.message}`);
-    }
-  }
-
-  if (commandName === 'code_review') {
-    if (!checkVIP(interaction)) return interaction.reply({ content: "❌ Cette commande est réservée aux membres Premium/VIP !", ephemeral: true });
-    await interaction.deferReply();
-    const code = options.getString('code');
-    const prompt = `Voici un code qui contient une erreur ou qui peut être amélioré :\n\n${code}\n\nTrouve le bug, corrige-le, et explique-moi ce qui n'allait pas comme le ferait un développeur sénior.`;
-    try {
-      let response = await callVIPAI(prompt, "Tu es un développeur Sénior VIP (CTO). Tu es bienveillant, expert en tous les langages, et tu expliques les bugs avec pédagogie.");
-      const remaining = consumeQuota();
-      const footer = `\n\n*⚡ ${remaining}/12000 requêtes IA restantes aujourd'hui*`;
-      
-      const chunks = response.match(/[\s\S]{1,1900}/g) || [];
-      await interaction.editReply("💻 **Analyse de ton code terminée :**");
-      for (let i = 0; i < chunks.length; i++) {
-        let contentToSend = chunks[i];
-        if (i === chunks.length - 1) contentToSend += footer;
-        await interaction.channel.send(contentToSend);
-      }
-    } catch (e) {
-      await interaction.editReply("❌ Les serveurs IA sont surchargés, réessaie dans un instant.");
-    }
-  }
-
-  if (commandName === 'copywriter') {
-    if (!checkVIP(interaction)) return interaction.reply({ content: "❌ Cette commande est réservée aux membres Premium/VIP !", ephemeral: true });
-    await interaction.deferReply();
-    const texte = options.getString('texte');
-    const prompt = `Voici un texte brut :\n\n${texte}\n\nRéécris ce texte de manière extrêmement professionnelle, sans aucune faute d'orthographe, avec un vocabulaire riche, persuasif et percutant.`;
-    try {
-      let response = await callVIPAI(prompt, "Tu es le meilleur copywriter francophone. Ton style est hypnotique, professionnel et parfait.");
-      const remaining = consumeQuota();
-      const footer = `\n\n*⚡ ${remaining}/12000 requêtes IA restantes aujourd'hui*`;
-      
-      const chunks = response.match(/[\s\S]{1,1900}/g) || [];
-      await interaction.editReply("✍️ **Voici ton texte réécrit comme un pro :**");
-      for (let i = 0; i < chunks.length; i++) {
-        let contentToSend = chunks[i];
-        if (i === chunks.length - 1) contentToSend += footer;
-        await interaction.channel.send(contentToSend);
-      }
-    } catch (e) {
-      await interaction.editReply("❌ Les serveurs IA sont surchargés, réessaie dans un instant.");
-    }
-  }
-
-  if (commandName === 'imagine_pro') {
-    if (!checkVIP(interaction)) return interaction.reply({ content: "❌ Cette commande est réservée aux membres Premium/VIP !", ephemeral: true });
-    await interaction.deferReply();
-    const prompt = options.getString('prompt');
-    const enhancedPrompt = `Génère un prompt très détaillé en anglais basé sur cette idée : "${prompt}". Le prompt doit décrire une image de qualité chef-d'oeuvre, 8k resolution, highly detailed, cinematic lighting. Réponds UNIQUEMENT avec le prompt anglais. Ne dis rien d'autre.`;
-    
-    try {
-      let englishPrompt = await callVIPAI(enhancedPrompt, "Tu es un prompteur d'images expert.");
-      englishPrompt = encodeURIComponent(englishPrompt.trim());
-      const imageUrl = `https://image.pollinations.ai/prompt/${englishPrompt}?width=1024&height=1024&nologo=true&model=flux`;
-      
-      const remaining = consumeQuota();
-      const embed = new EmbedBuilder()
-        .setTitle("💎 Voici ton image VIP (Haute Qualité) :")
-        .setImage(imageUrl)
-        .setColor('#CF6B45')
-        .setFooter({ text: `⚡ ${remaining}/12000 requêtes IA restantes aujourd'hui` });
-        
-      await interaction.editReply({ embeds: [embed] });
-    } catch (e) {
-      await interaction.editReply("❌ Les serveurs IA sont surchargés, réessaie dans un instant.");
-    }
-  }
-
-  if (commandName === 'business_plan') {
-    if (!checkVIP(interaction)) return interaction.reply({ content: "❌ Cette commande est réservée aux membres Premium/VIP !", ephemeral: true });
-    await interaction.deferReply();
-    const projet = options.getString('projet');
-    const prompt = `Voici une idée de projet ou d'entreprise :\n\n"${projet}"\n\nRédige un business plan complet, structuré, très professionnel et réaliste pour ce projet (Modèle économique, Analyse de marché, Stratégie marketing, Projections financières simplifiées).`;
-    
-    try {
-      let response = await callVIPAI(prompt, "Tu es un consultant expert en stratégie d'entreprise et finance (ex-McKinsey).");
-      const remaining = consumeQuota();
-      const footer = `\n\n*⚡ ${remaining}/12000 requêtes IA restantes aujourd'hui*`;
-      
-      const chunks = response.match(/[\s\S]{1,1900}/g) || [];
-      await interaction.editReply("📈 **Ton Business Plan VIP est prêt :**");
-      for (let i = 0; i < chunks.length; i++) {
-        let contentToSend = chunks[i];
-        if (i === chunks.length - 1) contentToSend += footer;
-        await interaction.channel.send(contentToSend);
-      }
-    } catch (e) {
-      await interaction.editReply("❌ Les serveurs IA sont surchargés, réessaie dans un instant.");
-    }
-  }
 };

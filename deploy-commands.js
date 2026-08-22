@@ -45,15 +45,15 @@ const rest = new REST({ version: '10' }).setToken(TOKEN);
 
 (async () => {
     try {
-        console.log(`⏳ Début du déploiement de ${commands.length} commandes (Global)...`);
+        const GUILD_ID = process.env.GUILD_ID || '1529954079260807260';
+        console.log(`⏳ Début du déploiement de ${commands.length} commandes sur le serveur ${GUILD_ID}...`);
 
         const data = await rest.put(
-            Routes.applicationCommands(clientId),
+            Routes.applicationGuildCommands(clientId, GUILD_ID),
             { body: commands },
         );
 
-        console.log(`✅ Succès ! ${data.length} commandes ont été enregistrées sur l'application Discord.`);
-        console.log(`   (La commande /sondage est maintenant disponible dans ton serveur !)`);
+        console.log(`✅ Succès ! ${data.length} commandes ont été enregistrées instantanément.`);
     } catch (error) {
         console.error(error);
     }
