@@ -6,6 +6,9 @@ const {
 const { readDatabase, writeDatabase } = require('../utils/db');
 const { renderShopGif, renderShopPng } = require('../utils/cards/shopGif');
 const { renderRosesCard } = require('../utils/cards/rosesCard');
+const { renderWheelGif } = require('../utils/cards/wheelGif');
+
+const WHEEL_COOLDOWN_MS = 60 * 60 * 1000; // 1 tour par heure
 
 function getDb() {
     const db = readDatabase();
@@ -242,6 +245,11 @@ module.exports = [
         .setName('top_roses')
         .setDescription('🏆 Classement des membres les plus riches !')
         .setDefaultMemberPermissions(null),
+
+    new SlashCommandBuilder()
+        .setName('roue')
+        .setDescription('🎡 Tourne la roue de la chance et gagne jusqu\'à 50 roses !')
+        .setDefaultMemberPermissions(null),
 ];
 
 module.exports.execute = async (interaction) => {
@@ -304,6 +312,46 @@ module.exports.execute = async (interaction) => {
             .setImage('https://i.pinimg.com/originals/c9/28/fc/c928fcce4d93cb0c1ab083c6b2413a1a.gif');
 
         return interaction.reply({ embeds: [embed] });
+    }
+
+    if (commandName === 'roue') {
+        const db = getDb();
+        if (!db.wheelCooldowns) db.wheelCooldowns = {};
+        const last = db.wheelCooldowns[interaction.user.id] || 0;
+        const now = Date.now();
+        const remaining = WHEEL_COOLDOWN_MS - (now - last);
+
+        if (remaining > 0) {
+            const nextAvailable = Math.floor((last + WHEEL_COOLDOWN_MS) / 1000);
+            return interaction.reply({
+                content: `⏳ Tu as déjà tourné la roue ! Reviens <t:${nextAvailable}:R>.`,
+                ephemeral: true,
+            });
+        }
+
+        await interaction.deferReply();
+
+        const { buffer, winValue } = await renderWheelGif();
+
+        db.wheelCooldowns[interaction.user.id] = now;
+        if (!db.economy) db.economy = {};
+        if (!db.economy[interaction.user.id]) db.economy[interaction.user.id] = { roses: 0 };
+        if (winValue > 0) db.economy[interaction.user.id].roses += winValue;
+        saveDb(db);
+
+        const attachment = new AttachmentBuilder(buffer, { name: 'roue.gif' });
+        const embed = new EmbedBuilder()
+            .setColor(winValue > 0 ? 0x00e5a0 : 0xff1e56)
+            .setAuthor({ name: '🎡 ROUE DE LA CHANCE' })
+            .setDescription(
+                winValue > 0
+                    ? `🎉 La roue s'arrête sur **${winValue} 🌹 roses** !\n💳 Nouveau solde : \`${db.economy[interaction.user.id].roses} roses\``
+                    : `💀 Pas de chance cette fois, la roue s'arrête sur **0**.\n🔁 Retente ta chance dans 1 heure !`
+            )
+            .setImage('attachment://roue.gif')
+            .setFooter({ text: 'Prochain tour possible dans 1 heure' });
+
+        return interaction.editReply({ embeds: [embed], files: [attachment] });
     }
 
     if (commandName === 'top_roses') {

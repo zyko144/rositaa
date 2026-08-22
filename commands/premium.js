@@ -1,6 +1,7 @@
 const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, PermissionFlagsBits, AttachmentBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, ChannelType } = require('discord.js');
 const fs = require('fs');
 const { brandedEmbed, buildBrandedReply, PINK_ALERT } = require('../utils/theme');
+const { SEGMENTS } = require('../utils/cards/wheelGif');
 
 let rawKeys = process.env.GEMINI_API_KEYS || '';
 let apiKeys = rawKeys.split(',').map(k => k.trim()).filter(k => k.length > 0);
@@ -67,6 +68,10 @@ module.exports = [
 
   new SlashCommandBuilder().setName('setup_shop_category')
     .setDescription('🌸 Crée la catégorie Boutique & Jeux avec ses salons explicatifs')
+    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+
+  new SlashCommandBuilder().setName('setup_roue')
+    .setDescription('🎡 Crée le salon de la roue de la chance')
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
   new SlashCommandBuilder().setName('giveaway')
@@ -278,6 +283,36 @@ module.exports.execute = async (interaction) => {
     await explicationsChannel.send({ embeds: [explicationsEmbed], files: explicationsFiles });
 
     return interaction.editReply({ content: `✅ Catégorie et salons créés : ${boutiqueChannel}, ${casinoChannel}, ${giftChannel}, ${explicationsChannel}` });
+  }
+
+  if (commandName === 'setup_roue') {
+    await interaction.deferReply({ ephemeral: true });
+    const { guild } = interaction;
+
+    let category = guild.channels.cache.find(c => c.type === ChannelType.GuildCategory && c.name === '🌸 BOUTIQUE & JEUX');
+    if (!category) {
+      category = await guild.channels.create({ name: '🌸 BOUTIQUE & JEUX', type: ChannelType.GuildCategory });
+    }
+
+    let roueChannel = guild.channels.cache.find(c => c.parentId === category.id && c.name === '🎡-roue');
+    if (!roueChannel) {
+      roueChannel = await guild.channels.create({ name: '🎡-roue', type: ChannelType.GuildText, parent: category.id });
+    }
+
+    const oddsText = SEGMENTS.map(s => `**${s.value} 🌹** — ${s.weight}% de chances`).join('\n');
+
+    const { embed, files } = await buildBrandedReply({
+      title: '🎡 Bienvenue sur la Roue de la Chance !',
+      banner: 'fun',
+      description:
+        `Tape \`/roue\` pour la faire tourner et gagner des roses **gratuitement**, aucune mise requise !\n\n` +
+        `**🎯 Chances de gain :**\n${oddsText}\n\n` +
+        `**⏳ Cooldown :** 1 tour par heure.\n\n` +
+        `Reviens régulièrement tenter ta chance ! 🌹`,
+    });
+    await roueChannel.send({ embeds: [embed], files });
+
+    return interaction.editReply({ content: `✅ Salon de la roue créé : ${roueChannel}` });
   }
 
   if (commandName === 'giveaway') {
