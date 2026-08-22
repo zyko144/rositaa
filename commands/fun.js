@@ -1,16 +1,22 @@
-
-const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
+﻿const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 
 module.exports = [
-  new SlashCommandBuilder().setName('8ball').setDefaultMemberPermissions(null).setDescription('Pose une question magique')
+  new SlashCommandBuilder().setName('8ball').setDescription('Pose une question magique')
+    .setDefaultMemberPermissions(null)
     .addStringOption(opt => opt.setName('question').setDescription('Question').setRequired(true)),
-  new SlashCommandBuilder().setName('coinflip').setDefaultMemberPermissions(null).setDescription('Pile ou face'),
-  new SlashCommandBuilder().setName('roll').setDefaultMemberPermissions(null).setDescription('Lance un dé de 1 à 100'),
-  new SlashCommandBuilder().setName('joke').setDefaultMemberPermissions(null).setDescription('Raconte une blague aléatoire'),
-  new SlashCommandBuilder().setName('meme').setDefaultMemberPermissions(null).setDescription('Affiche un meme (simulé)'),
-  new SlashCommandBuilder().setName('rps').setDefaultMemberPermissions(null).setDescription('Pierre Feuille Ciseaux')
+  new SlashCommandBuilder().setName('coinflip_fun').setDescription('Pile ou face')
+    .setDefaultMemberPermissions(null),
+  new SlashCommandBuilder().setName('roll').setDescription('Lance un dé de 1 à 100')
+    .setDefaultMemberPermissions(null),
+  new SlashCommandBuilder().setName('joke').setDescription('Raconte une blague aléatoire')
+    .setDefaultMemberPermissions(null),
+  new SlashCommandBuilder().setName('meme').setDescription('Affiche un meme (simulé)')
+    .setDefaultMemberPermissions(null),
+  new SlashCommandBuilder().setName('rps').setDescription('Pierre Feuille Ciseaux')
+    .setDefaultMemberPermissions(null)
     .addStringOption(opt => opt.setName('choix').setDescription('pierre / feuille / ciseaux').setRequired(true)),
-  new SlashCommandBuilder().setName('lovecalc').setDefaultMemberPermissions(null).setDescription('Calcule l\'amour')
+  new SlashCommandBuilder().setName('lovecalc').setDescription('Calcule l\'amour')
+    .setDefaultMemberPermissions(null)
     .addUserOption(opt => opt.setName('user1').setDescription('Personne 1').setRequired(true))
     .addUserOption(opt => opt.setName('user2').setDescription('Personne 2').setRequired(true))
 ];
@@ -24,7 +30,7 @@ module.exports.execute = async (interaction) => {
     return interaction.reply({ content: `🎱 **Question:** ${options.getString('question')}\n**Réponse:** ${r}` });
   }
 
-  if (commandName === 'coinflip') {
+  if (commandName === 'coinflip_fun') {
     const res = Math.random() < 0.5 ? 'Pile' : 'Face';
     return interaction.reply({ content: `🪙 La pièce est tombée sur : **${res}**` });
   }
@@ -52,7 +58,7 @@ module.exports.execute = async (interaction) => {
     const botChoices = ['pierre', 'feuille', 'ciseaux'];
     const botC = botChoices[Math.floor(Math.random() * botChoices.length)];
     let result = 'Égalité !';
-    if ((user === 'pierre' && botC === 'ciseaux') || (user === 'feuille' && botC === 'pierre') || (user === 'ciseaux' && botC === 'feuille')) result = 'Tu as gagné ! 🎉';
+    if ((user === 'pierre' && botC === 'ciseaux') || (user === 'feuille' && botC === 'pierre') || (user === 'ciseaux' && botC === 'feuille')) result = 'Tu as gagné ! 🏆';
     else if (user !== botC) result = 'J\'ai gagné ! 🤖';
     return interaction.reply({ content: `Tu as joué **${user}**, j'ai joué **${botC}**.\n${result}` });
   }
