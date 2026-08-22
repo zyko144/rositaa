@@ -1,7 +1,6 @@
 const { Client, GatewayIntentBits, Partials, EmbedBuilder, Collection, ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType, PermissionFlagsBits, AttachmentBuilder } = require('discord.js');
 const express = require('express');
 const fs = require('fs');
-const discordTranscripts = require('discord-html-transcripts');
 require('dotenv').config();
 const path = require('path');
 const { initDatabase, readDatabase, writeDatabase } = require('./utils/db');
@@ -546,30 +545,10 @@ client.on('interactionCreate', async interaction => {
       const closingEmbed = new EmbedBuilder()
         .setColor(0xFF1E56)
         .setTitle('🔒 Fermeture du ticket')
-        .setDescription('Ce salon sera supprimé dans quelques secondes.\nSauvegarde de la conversation en cours...')
+        .setDescription('Ce salon sera supprimé dans quelques secondes...')
         .setFooter({ text: 'Rositaa 🌸' });
       await interaction.reply({ embeds: [closingEmbed] });
 
-      try {
-        const attachment = await discordTranscripts.createTranscript(interaction.channel, {
-             limit: -1,
-             returnType: 'attachment',
-             filename: `transcript-${interaction.channel.name}.html`,
-             saveImages: true,
-             poweredBy: false
-        });
-
-        const members = interaction.channel.members.filter(m => !m.user.bot);
-        for (const [id, member] of members) {
-            await member.send({
-                content: `📁 Voici une copie de ton ticket **${interaction.channel.name}** fermé sur Rositaa 🌸. Tu peux ouvrir le fichier HTML sur ton navigateur (PC ou Téléphone) pour lire la conversation complète avec le design de Discord.`,
-                files: [attachment]
-            }).catch(() => {});
-        }
-      } catch (e) {
-        console.error("Erreur lors de la génération du transcript:", e);
-      }
-      
       setTimeout(() => interaction.channel.delete().catch(() => {}), 5000);
     }
     } catch (e) {
