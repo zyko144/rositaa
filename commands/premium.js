@@ -44,7 +44,7 @@ module.exports = [
     .setDescription('??? Anti-Raid Ultime: Verrouille tous les salons du serveur !')
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
     
-  new SlashCommandBuilder().setName('unlock')
+  new SlashCommandBuilder().setName('unlockall')
     .setDescription('??? Anti-Raid Ultime: D�verrouille les salons du serveur !')
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
@@ -101,7 +101,7 @@ module.exports.execute = async (interaction) => {
     }
   }
 
-  if (commandName === 'unlock') {
+  if (commandName === 'unlockall') {
     await interaction.deferReply({ ephemeral: false });
     try {
       const channels = await interaction.guild.channels.fetch();
@@ -277,3 +277,4 @@ module.exports.execute = async (interaction) => {
 
 
 };
+

@@ -135,7 +135,32 @@ client.once('ready', async () => {
 // Autorole is now manual via Verification Button
 
 // Message et Commandes standards
+
 client.on('messageCreate', async (message) => {
+    // --- ECONOMY : Gagner des roses par message ---
+    if (!message.author.bot) {
+        if (!client.ecoCooldowns) client.ecoCooldowns = new Map();
+        const now = Date.now();
+        const lastMsgTime = client.ecoCooldowns.get(message.author.id) || 0;
+        
+        // Cooldown de 1 minute pour emp�cher le spam
+        if (now - lastMsgTime > 60000) {
+            client.ecoCooldowns.set(message.author.id, now);
+            const dbPath = require('path').join(__dirname, 'database.json');
+            let db = {};
+            if (fs.existsSync(dbPath)) {
+                try { db = JSON.parse(fs.readFileSync(dbPath, 'utf8')); } catch(e) {}
+            }
+            if (!db.economy) db.economy = {};
+            if (!db.economy[message.author.id]) db.economy[message.author.id] = { roses: 0 };
+            
+            // Gain al�atoire de 1 � 3 roses par message
+            const earned = Math.floor(Math.random() * 3) + 1;
+            db.economy[message.author.id].roses += earned;
+            fs.writeFileSync(dbPath, JSON.stringify(db, null, 2));
+        }
+    }
+
   if (message.content === '!reset-top' && message.member && message.member.permissions.has(PermissionFlagsBits.Administrator)) {
       const dbPath = require('path').join(__dirname, 'database.json');
       let db = {};
