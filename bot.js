@@ -125,10 +125,27 @@ const BANNED_PINGS = ['1xpj', '1xpj2', '6t2b'];
 
 const invitesCache = new Map();
 
+async function cacheGuildInvites(guild) {
+    try {
+        const invites = await guild.invites.fetch();
+        invitesCache.set(guild.id, new Map(invites.map(i => [i.code, i.uses])));
+    } catch (e) {
+        console.error(`Impossible de charger les invitations pour ${guild.name}:`, e.message);
+    }
+}
+
 client.once('ready', async () => {
     console.log('Bot connect en tant que ' + client.user.tag + ' !');
     resumeGiveaways();
+
+    // Sans ce cache initial, guildMemberAdd ne peut jamais determiner quelle
+    // invitation a ete utilisee (usedInvite reste toujours null).
+    for (const guild of client.guilds.cache.values()) {
+        await cacheGuildInvites(guild);
+    }
 });
+
+client.on('guildCreate', (guild) => cacheGuildInvites(guild));
 
 
 // Autorole is now manual via Verification Button
@@ -718,6 +735,8 @@ client.on('guildMemberAdd', async member => {
                });
                const attachment = new AttachmentBuilder(cardBuffer, { name: 'invite.gif' });
                await announceChannel.send({ content: `${usedInvite.inviter}`, files: [attachment] });
+           } else {
+               console.error(`Salon d'annonce d'invitations introuvable (ID ${INVITE_ANNOUNCE_CHANNEL_ID}) : verifie que le bot peut voir ce salon.`);
            }
        } catch (e) {
            console.error('Erreur carte invitation', e);
