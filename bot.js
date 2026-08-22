@@ -583,7 +583,38 @@ client.on('inviteDelete', invite => {
   if (guildInvites) guildInvites.delete(invite.code);
 });
 
+
+// === ANTI-RAID JOIN QUEUE ===
+const joinQueue = [];
+client.isLockdownActive = false;
+
 client.on('guildMemberAdd', async member => {
+    // --- Anti-Raid Automatique (Join Spam) ---
+    const now = Date.now();
+    joinQueue.push(now);
+    while (joinQueue.length > 0 && now - joinQueue[0] > 15000) {
+        joinQueue.shift();
+    }
+    
+    if (joinQueue.length >= 8) { // 8 joins in 15 seconds
+        if (!client.isLockdownActive) {
+            client.isLockdownActive = true;
+            try {
+                const guild = member.guild;
+                const channels = await guild.channels.fetch();
+                for (const [id, channel] of channels) {
+                    if (channel && channel.type === 0) {
+                        await channel.permissionOverwrites.edit(guild.roles.everyone.id, { SendMessages: false }).catch(()=>{});
+                    }
+                }
+                const alertChannel = guild.channels.cache.find(c => c.name.includes('general') || c.name.includes('g�n�ral')) || guild.systemChannel;
+                if (alertChannel) {
+                    alertChannel.send('?? **ALERTE ANTI-RAID AUTOMATIQUE** ??\n\nUne attaque massive a �t� d�tect�e (trop d\'arriv�es en quelques secondes). Le bot a **VERROUILL�** automatiquement tous les salons.\nAdministrateurs : utilisez `/unlock` quand le calme sera revenu.');
+                }
+            } catch(e) { console.error('Erreur auto-lockdown', e); }
+        }
+    }
+
   try {
     const newInvites = await member.guild.invites.fetch();
     const oldInvites = invitesCache.get(member.guild.id);

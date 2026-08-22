@@ -112,6 +112,7 @@ module.exports.execute = async (interaction) => {
           count++;
         }
       }
+      interaction.client.isLockdownActive = false;
       return interaction.editReply('? **LOCKDOWN D�SACTIV�** ?\n\n' + count + ' salons ont �t� d�verrouill�s. Le serveur reprend son fonctionnement normal.');
     } catch (e) {
       return interaction.editReply('? Erreur: ' + e.message);
