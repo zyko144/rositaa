@@ -139,7 +139,7 @@ async function ensureRole(guild, roleConfig) {
         const botTopPosition = guild.members.me?.roles.highest.position || 1;
         role = await guild.roles.create({
             name: roleConfig.name,
-            color: roleConfig.color,
+            colors: { primaryColor: roleConfig.color },
             position: Math.max(1, botTopPosition - 1),
             reason: 'Article de la boutique Rositaa',
         });
@@ -267,6 +267,11 @@ module.exports = [
         .setDescription('🎡 Tourne la roue de la chance et gagne jusqu\'à 50 roses !')
         .setDefaultMemberPermissions(null),
 ];
+
+// Reexportes pour que d'autres modules (setup_shop_category, scripts admin)
+// puissent provisionner les memes roles sans dupliquer la config.
+module.exports.ROLE_ITEMS = ROLE_ITEMS;
+module.exports.ensureRole = ensureRole;
 
 module.exports.execute = async (interaction) => {
     const { commandName } = interaction;
@@ -448,7 +453,7 @@ module.exports.handleModal = async (interaction) => {
     const botTopPosition = interaction.guild.members.me?.roles.highest.position || 1;
     const role = await interaction.guild.roles.create({
         name,
-        color,
+        colors: { primaryColor: color },
         position: Math.max(1, botTopPosition - 1),
         reason: 'Rôle personnalisé acheté en boutique',
     });

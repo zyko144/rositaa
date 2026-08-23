@@ -2,6 +2,7 @@ const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, Butt
 const fs = require('fs');
 const { brandedEmbed, buildBrandedReply, PINK_ALERT } = require('../utils/theme');
 const { SEGMENTS } = require('../utils/cards/wheelGif');
+const { ROLE_ITEMS, ensureRole } = require('./economy');
 
 let rawKeys = process.env.GEMINI_API_KEYS || '';
 let apiKeys = rawKeys.split(',').map(k => k.trim()).filter(k => k.length > 0);
@@ -208,6 +209,13 @@ module.exports.execute = async (interaction) => {
     let category = guild.channels.cache.find(c => c.type === ChannelType.GuildCategory && c.name === '🌸 BOUTIQUE & JEUX');
     if (!category) {
       category = await guild.channels.create({ name: '🌸 BOUTIQUE & JEUX', type: ChannelType.GuildCategory });
+    }
+
+    // Cree tout de suite les roles vendus en boutique (au lieu d'attendre le
+    // premier achat de chacun) : ils sont visibles/configurables par le staff
+    // des l'installation, et /buy n'a plus jamais a les creer a la volee.
+    for (const roleConfig of Object.values(ROLE_ITEMS)) {
+      await ensureRole(guild, roleConfig);
     }
 
     async function ensureChannel(name) {
