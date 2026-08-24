@@ -20,7 +20,13 @@ const COLORS = ['#ff2d95', '#ff5ca8'];
 
 const W = 520;
 const H = 580;
-const SPIN_FRAMES = 30;
+// Volontairement peu de frames (chaque frame = un rendu canvas + dithering
+// synchrones qui bloquent la boucle d'evenements) : sous charge concurrente
+// (plusieurs membres qui jouent en meme temps), un rendu trop long peut
+// retarder l'accuse de reception d'une AUTRE interaction au-dela des 3s
+// tolerees par Discord ("This interaction failed"). Les delais par frame
+// sont augmentes en compensation pour garder une duree d'animation similaire.
+const SPIN_FRAMES = 20;
 const HOLD_FRAMES = 6;
 const FULL_SPINS = 5;
 
@@ -150,7 +156,7 @@ async function renderWheelGif(opts = {}) {
     }
 
     frames.push(ctx);
-    delays.push(i < SPIN_FRAMES ? 25 + Math.floor(easeOutCubic(spinT) * 70) : 900);
+    delays.push(i < SPIN_FRAMES ? 35 + Math.floor(easeOutCubic(spinT) * 100) : 900);
   }
 
   const buffer = await encodeFrames(frames, { width: W, height: H, delay: delays });

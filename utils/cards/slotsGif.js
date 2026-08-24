@@ -15,7 +15,13 @@ const REEL_Y = 130;
 
 const HOLD_FRAMES = 8;
 // Chaque rouleau s'arrete a un moment different (effet cascade classique).
-const STOP_FRAMES = [16, 22, 28];
+// Volontairement peu de frames (chaque frame = un rendu canvas + dithering
+// synchrones qui bloquent la boucle d'evenements) : sous charge concurrente
+// (plusieurs membres qui jouent en meme temps), un rendu trop long peut
+// retarder l'accuse de reception d'une AUTRE interaction au-dela des 3s
+// tolerees par Discord ("This interaction failed"). Le delai par frame est
+// augmente en compensation pour garder une duree d'animation similaire.
+const STOP_FRAMES = [10, 14, 18];
 const TOTAL_FRAMES = STOP_FRAMES[STOP_FRAMES.length - 1] + HOLD_FRAMES;
 
 function reelSymbolIndex(reelIndex, frame) {
@@ -100,7 +106,7 @@ async function renderSlotsGif({ symbolKeys, win, resultLabel }) {
 
     frames.push(ctx);
     const isSpinning = i < STOP_FRAMES[2];
-    delays.push(isSpinning ? 45 : 900);
+    delays.push(isSpinning ? 65 : 900);
   }
 
   return encodeFrames(frames, { width: W, height: H, delay: delays });

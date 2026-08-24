@@ -75,13 +75,16 @@ module.exports.execute = async (interaction) => {
     
     const subCommand = interaction.options.getSubcommand();
     const bet = interaction.options.getInteger('mise');
-    const roses = getRoses(interaction.user.id);
-    
-    if (roses < bet) {
-        return interaction.reply({ content: `❌ Tu n'as pas assez de roses ! Tu n'en as que **${roses}**.`, ephemeral: true });
-    }
 
+    // Accuse reception AVANT toute lecture DB : garantit qu'on reste sous les
+    // 3s tolerees par Discord meme si la lecture est temporairement lente
+    // (charge concurrente d'autres commandes qui rendent des GIF au meme moment).
     await interaction.deferReply({ ephemeral: true });
+
+    const roses = getRoses(interaction.user.id);
+    if (roses < bet) {
+        return interaction.editReply({ content: `❌ Tu n'as pas assez de roses ! Tu n'en as que **${roses}**.` });
+    }
 
     if (subCommand === 'coinflip') {
         const choice = interaction.options.getString('choix');
