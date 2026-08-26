@@ -2,7 +2,7 @@ require('./fonts');
 const { createCanvas } = require('@napi-rs/canvas');
 const { drawCardBackground } = require('./draw');
 const { getIcon } = require('./icons');
-const { encodeFrames, easeOutCubic } = require('./gif');
+const { encodeFrames, easeOutCubic, yieldToEventLoop } = require('./gif');
 
 // Taux degressifs : plus le gain est gros, plus il est rare. Somme = 100.
 const SEGMENTS = [
@@ -157,6 +157,9 @@ async function renderWheelGif(opts = {}) {
 
     frames.push(ctx);
     delays.push(i < SPIN_FRAMES ? 35 + Math.floor(easeOutCubic(spinT) * 100) : 900);
+    // Voir gif.js : chaque frame dessinee est du calcul synchrone qui peut
+    // bloquer le thread principal sous charge concurrente.
+    await yieldToEventLoop();
   }
 
   const buffer = await encodeFrames(frames, { width: W, height: H, delay: delays });

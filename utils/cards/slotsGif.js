@@ -2,7 +2,7 @@ require('./fonts');
 const { createCanvas } = require('@napi-rs/canvas');
 const { roundRect, drawCardBackground } = require('./draw');
 const { getIcon } = require('./icons');
-const { encodeFrames } = require('./gif');
+const { encodeFrames, yieldToEventLoop } = require('./gif');
 
 const SYMBOLS = ['cherry', 'lemon', 'bell', 'gem', 'slotmachine'];
 
@@ -107,6 +107,9 @@ async function renderSlotsGif({ symbolKeys, win, resultLabel }) {
     frames.push(ctx);
     const isSpinning = i < STOP_FRAMES[2];
     delays.push(isSpinning ? 65 : 900);
+    // Voir gif.js : chaque frame dessinee est du calcul synchrone qui peut
+    // bloquer le thread principal sous charge concurrente.
+    await yieldToEventLoop();
   }
 
   return encodeFrames(frames, { width: W, height: H, delay: delays });

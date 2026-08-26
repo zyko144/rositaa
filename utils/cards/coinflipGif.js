@@ -1,7 +1,7 @@
 require('./fonts');
 const { createCanvas } = require('@napi-rs/canvas');
 const { roundRect, drawCardBackground } = require('./draw');
-const { encodeFrames, easeOutCubic } = require('./gif');
+const { encodeFrames, easeOutCubic, yieldToEventLoop } = require('./gif');
 
 const W = 480;
 const H = 320;
@@ -87,6 +87,9 @@ async function renderCoinflipGif({ result }) {
 
     frames.push(ctx);
     delays.push(i < SPIN_FRAMES ? 30 + Math.floor(easeOutCubic(spinT) * 90) : 900);
+    // Voir gif.js : chaque frame dessinee est du calcul synchrone qui peut
+    // bloquer le thread principal sous charge concurrente.
+    await yieldToEventLoop();
   }
 
   return encodeFrames(frames, { width: W, height: H, delay: delays });
